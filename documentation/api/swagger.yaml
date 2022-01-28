@@ -1,0 +1,68 @@
+openapi: 3.0.0
+info:
+  title: Japanese Food Survey Backend API
+  description: An API for the Japanese Food Survey Backend service.
+  version: 1.0.0
+servers:
+- url: https://virtserver.swaggerhub.com/J0kerPanda/japanese_food_survey/1.0.0
+  description: SwaggerHub API Auto Mocking
+tags:
+- name: admins
+  description: Secured Admin-only calls.
+- name: users
+  description: Operations available to regular users.
+paths:
+  /user/log_in:
+    post:
+      tags:
+      - users
+      summary: allows users to log into the system.
+      description: |
+        Allows the users to log into the system by providing their credentials in the Authorization header.
+      operationId: userLogIn
+      responses:
+        "200":
+          description: |
+            Successfully authenticated.
+            The session ID is returned in a cookie named `JFSBSESSIONID`. You need to include this cookie in subsequent requests.
+          headers:
+            Set-Cookie:
+              style: simple
+              explode: false
+              schema:
+                type: string
+                example: JFSBSESSIONID=abcde12345; Path=/; Secure
+        "400":
+          description: Authorization header was not submitted.
+        "401":
+          description: Incorrect login details.
+      security:
+      - user_auth: []
+  /user/log_out:
+    post:
+      tags:
+      - users
+      summary: allows users to log out from the system.
+      description: |
+        Allows the users to log out from the system.
+      operationId: userLogOut
+      responses:
+        "200":
+          description: "Successfully logged out. \nThe user's `JFSBSESSIONID` token\
+            \ is no longer valid.\n"
+        "401":
+          description: The `JFSBSESSIONID` token was not submitted.
+        "403":
+          description: The user is already logged out.
+      security:
+      - token_auth: []
+components:
+  schemas: {}
+  securitySchemes:
+    user_auth:
+      type: http
+      scheme: basic
+    token_auth:
+      type: apiKey
+      name: JFSBSESSIONID
+      in: cookie

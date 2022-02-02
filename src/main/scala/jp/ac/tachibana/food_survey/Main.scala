@@ -12,12 +12,12 @@ import jp.ac.tachibana.food_survey.persistence.authentication.PostgresAuthTokenR
 import jp.ac.tachibana.food_survey.services.authentication.DefaultAuthenticationService
 import jp.ac.tachibana.food_survey.util.crypto.SSLContextLoader
 
-object Main extends IOApp.Simple {
+object Main extends IOApp.Simple:
 
   override def run: IO[Unit] =
     for {
       appConfig <- ApplicationConfig.load[IO]
-      _ <- IO.delay(println(appConfig))
+      _ <- IO.delay(println(appConfig.http))
       sslContext <- SSLContextLoader.load[IO](appConfig.authentication.ssl)
       result <- DatabaseTransactor.start[IO](appConfig.persistence).use { (tr: Transactor[IO]) =>
         implicit val transactor: Transactor[IO] = tr
@@ -38,4 +38,3 @@ object Main extends IOApp.Simple {
         } yield start
       }
     } yield result
-}

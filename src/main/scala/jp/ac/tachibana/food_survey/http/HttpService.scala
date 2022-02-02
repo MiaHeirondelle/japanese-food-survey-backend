@@ -8,9 +8,12 @@ import cats.{Applicative, Monad, Monoid, MonoidK, SemigroupK}
 import javax.net.ssl.SSLContext
 import org.http4s.blaze.server.*
 import org.http4s.implicits.*
-import org.http4s.{HttpApp, HttpRoutes}
+import org.http4s.{Http, HttpApp, HttpRoutes}
+import org.http4s.server.middleware.{CORS, CORSConfig}
+import org.http4s.headers.Origin
+import org.http4s.Method
 
-import jp.ac.tachibana.food_survey.configuration.domain.HttpConfig
+import jp.ac.tachibana.food_survey.configuration.domain.http.{CorsConfig, HttpConfig}
 import jp.ac.tachibana.food_survey.http
 import jp.ac.tachibana.food_survey.http.routes.AuthenticationRoutes
 
@@ -21,12 +24,12 @@ class HttpService[F[_]: Async](
   routes: HttpService.Routes[F]*):
 
   private val httpApp: HttpApp[F] =
-    (authenticationRoutes.routes <+> routes
-      .map(_.routes)
-      .fold(HttpRoutes.empty[F])(_ <+> _)).orNotFound
+    withCORS(
+      (authenticationRoutes.routes <+> routes
+        .map(_.routes)
+        .fold(HttpRoutes.empty[F])(_ <+> _)).orNotFound)
 
-  def start(ec: ExecutionContext): F[Unit] = {
-
+  def start(ec: ExecutionContext): F[Unit] =
     val baseServer = BlazeServerBuilder[F]
       .withExecutionContext(ec)
       .withHttpApp(httpApp)
@@ -37,7 +40,18 @@ class HttpService[F[_]: Async](
       .serve
       .compile
       .drain
-  }
+
+  private def withCORS(service: Http[F, F]): Http[F, F] =
+    config.cors match {
+      case CorsConfig.CorsEnabled(allowedOrigins) =>
+        CORS.policy
+          .withAllowOriginHeader(allowedOrigins)
+          .withAllowMethodsIn(Set(Method.OPTIONS, Method.HEAD, Method.GET))
+          .withAllowCredentials(true)
+          .apply(service)
+      case CorsConfig.CorsDisabled =>
+        service
+    }
 
 object HttpService:
 

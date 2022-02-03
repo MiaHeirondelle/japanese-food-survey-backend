@@ -58,14 +58,14 @@ class AuthenticationMiddleware[F[_]: Monad](
         content = token.value,
         path = Some("/"),
         sameSite = authenticationConfig.secure match {
-          case HttpAuthenticationConfig.Mode.Insecure  => Some(SameSite.Strict)
-          case HttpAuthenticationConfig.Mode.Secure => Some(SameSite.None)
+          case HttpAuthenticationConfig.Mode.Insecure => Some(SameSite.Strict)
+          case HttpAuthenticationConfig.Mode.Secure   => Some(SameSite.None)
         },
         httpOnly = true,
         domain = Some(authenticationConfig.domain),
         secure = authenticationConfig.secure match {
           case HttpAuthenticationConfig.Mode.Insecure => false
-          case HttpAuthenticationConfig.Mode.Secure => true
+          case HttpAuthenticationConfig.Mode.Secure   => true
         }
       )
     )

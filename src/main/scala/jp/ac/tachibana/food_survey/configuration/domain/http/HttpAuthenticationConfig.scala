@@ -4,8 +4,8 @@ import pureconfig.ConfigReader
 import pureconfig.generic.derivation.ConfigReaderDerivation.Default.*
 
 case class HttpAuthenticationConfig(
-                                     domain: String,
-                                     secure: HttpAuthenticationConfig.Mode)
+  domain: String,
+  secure: HttpAuthenticationConfig.Mode)
 
 object HttpAuthenticationConfig:
 
@@ -19,6 +19,6 @@ object HttpAuthenticationConfig:
 
     implicit val reader: ConfigReader[HttpAuthenticationConfig.Mode] =
       ConfigReader.booleanConfigReader.map {
-        case true => HttpAuthenticationConfig.Mode.Secure
+        case true  => HttpAuthenticationConfig.Mode.Secure
         case false => HttpAuthenticationConfig.Mode.Insecure
       }

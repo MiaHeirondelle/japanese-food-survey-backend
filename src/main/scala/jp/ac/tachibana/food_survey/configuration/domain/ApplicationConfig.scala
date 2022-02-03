@@ -6,12 +6,10 @@ import pureconfig.error.ConfigReaderException
 import pureconfig.generic.derivation.ConfigReaderDerivation.Default.*
 import pureconfig.{ConfigReader, ConfigSource}
 
-import jp.ac.tachibana.food_survey.configuration.domain.authentication.AuthenticationConfig
-import jp.ac.tachibana.food_survey.configuration.domain.http.HttpConfig
+import jp.ac.tachibana.food_survey.configuration.domain.http.{HttpAuthenticationConfig, HttpConfig}
 
 case class ApplicationConfig(
   http: HttpConfig,
-  authentication: AuthenticationConfig,
   persistence: PersistenceConfig)
 
 object ApplicationConfig:

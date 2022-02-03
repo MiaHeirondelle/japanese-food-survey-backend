@@ -13,7 +13,7 @@ import org.http4s.dsl.Http4sDslBinCompat
 import org.http4s.server.AuthMiddleware
 import org.http4s.{AuthedRoutes, Request, Response, ResponseCookie, SameSite}
 
-import jp.ac.tachibana.food_survey.configuration.domain.authentication.{AuthenticationConfig, SSLConfig}
+import jp.ac.tachibana.food_survey.configuration.domain.http.HttpAuthenticationConfig
 import jp.ac.tachibana.food_survey.domain.user.User
 import jp.ac.tachibana.food_survey.http
 import jp.ac.tachibana.food_survey.http.middleware.AuthenticationMiddleware.authenticationTokenCookieName
@@ -21,7 +21,7 @@ import jp.ac.tachibana.food_survey.services.authentication.AuthenticationService
 import jp.ac.tachibana.food_survey.services.authentication.domain.AuthToken
 
 class AuthenticationMiddleware[F[_]: Monad](
-  authenticationConfig: AuthenticationConfig,
+  authenticationConfig: HttpAuthenticationConfig,
   authenticationService: AuthenticationService[F])
     extends Http4sDslBinCompat[F]:
 
@@ -57,12 +57,15 @@ class AuthenticationMiddleware[F[_]: Monad](
         name = authenticationTokenCookieName,
         content = token.value,
         path = Some("/"),
-        sameSite = Some(SameSite.Strict),
+        sameSite = authenticationConfig.secure match {
+          case HttpAuthenticationConfig.Mode.Insecure  => Some(SameSite.Strict)
+          case HttpAuthenticationConfig.Mode.Secure => Some(SameSite.None)
+        },
         httpOnly = true,
         domain = Some(authenticationConfig.domain),
-        secure = authenticationConfig.ssl match {
-          case SSLConfig.SSLDisabled   => false
-          case _: SSLConfig.SSLEnabled => true
+        secure = authenticationConfig.secure match {
+          case HttpAuthenticationConfig.Mode.Insecure => false
+          case HttpAuthenticationConfig.Mode.Secure => true
         }
       )
     )

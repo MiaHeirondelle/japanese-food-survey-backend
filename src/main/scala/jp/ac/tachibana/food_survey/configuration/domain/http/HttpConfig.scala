@@ -5,12 +5,11 @@ import pureconfig.ConfigReader
 import pureconfig.error.{CannotConvert, FailureReason}
 import pureconfig.generic.derivation.ConfigReaderDerivation.Default.*
 
-import jp.ac.tachibana.food_survey.configuration.domain.authentication.SSLConfig
-
 case class HttpConfig(
   host: String,
   port: Int,
-  cors: CorsConfig)
+  cors: CorsConfig,
+  authentication: HttpAuthenticationConfig)
 
 object HttpConfig:
 

@@ -10,7 +10,6 @@ import jp.ac.tachibana.food_survey.http.routes.AuthenticationRoutes
 import jp.ac.tachibana.food_survey.persistence.DatabaseTransactor
 import jp.ac.tachibana.food_survey.persistence.authentication.PostgresAuthTokenRepository
 import jp.ac.tachibana.food_survey.services.authentication.DefaultAuthenticationService
-import jp.ac.tachibana.food_survey.util.crypto.SSLContextLoader
 
 object Main extends IOApp.Simple:
 
@@ -18,7 +17,6 @@ object Main extends IOApp.Simple:
     for {
       appConfig <- ApplicationConfig.load[IO]
       _ <- IO.delay(println(appConfig.http))
-      sslContext <- SSLContextLoader.load[IO](appConfig.authentication.ssl)
       result <- DatabaseTransactor.start[IO](appConfig.persistence).use { (tr: Transactor[IO]) =>
         implicit val transactor: Transactor[IO] = tr
         val authTokenRepository = new PostgresAuthTokenRepository[IO]()
@@ -26,13 +24,12 @@ object Main extends IOApp.Simple:
           authenticationService <- DefaultAuthenticationService.create[IO](authTokenRepository)
           authenticationMiddleware =
             new AuthenticationMiddleware[IO](
-              appConfig.authentication,
+              appConfig.http.authentication,
               authenticationService
             )
           httpService = new HttpService[IO](
             config = appConfig.http,
-            authenticationRoutes = new AuthenticationRoutes[IO](authenticationMiddleware, authenticationService),
-            sslContext = sslContext
+            authenticationRoutes = new AuthenticationRoutes[IO](authenticationMiddleware, authenticationService)
           )
           start <- httpService.start(runtime.compute)
         } yield start

@@ -7,6 +7,7 @@ import pureconfig.generic.derivation.ConfigReaderDerivation.Default.*
 import pureconfig.{ConfigReader, ConfigSource}
 
 import jp.ac.tachibana.food_survey.configuration.domain.authentication.AuthenticationConfig
+import jp.ac.tachibana.food_survey.configuration.domain.http.HttpConfig
 
 case class ApplicationConfig(
   http: HttpConfig,

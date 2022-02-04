@@ -12,9 +12,9 @@ import jp.ac.tachibana.food_survey.domain.user.User
 import jp.ac.tachibana.food_survey.http.HttpService
 import jp.ac.tachibana.food_survey.http.middleware.AuthenticationMiddleware
 import jp.ac.tachibana.food_survey.http.middleware.AuthenticationMiddleware.authenticationTokenCookieName
-import jp.ac.tachibana.food_survey.http.model.LoginForm
 import org.http4s.FormDataDecoder.formEntityDecoder
 
+import jp.ac.tachibana.food_survey.http.model.auth.LoginForm
 import jp.ac.tachibana.food_survey.services.authentication.AuthenticationService
 import jp.ac.tachibana.food_survey.services.authentication.domain.AuthToken
 

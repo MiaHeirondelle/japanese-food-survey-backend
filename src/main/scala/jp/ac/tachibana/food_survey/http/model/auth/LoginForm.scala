@@ -1,8 +1,10 @@
-package jp.ac.tachibana.food_survey.http.model
+package jp.ac.tachibana.food_survey.http.model.auth
 
+import cats.syntax.apply.*
 import org.http4s.FormDataDecoder
 import org.http4s.FormDataDecoder.*
-import cats.syntax.apply.*
+
+import jp.ac.tachibana.food_survey.http.model.auth.LoginForm
 
 case class LoginForm(
   login: String,

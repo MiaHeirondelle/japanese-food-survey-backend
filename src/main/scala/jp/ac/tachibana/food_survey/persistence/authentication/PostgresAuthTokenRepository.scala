@@ -1,9 +1,12 @@
 package jp.ac.tachibana.food_survey.persistence.authentication
 
+import java.time.Instant
+
 import cats.effect.Async
 import cats.syntax.functor.*
 import doobie.*
 import doobie.implicits.*
+import doobie.postgres.implicits.*
 
 import jp.ac.tachibana.food_survey.domain.user.User
 import jp.ac.tachibana.food_survey.persistence.util.ParameterInstances.*
@@ -13,8 +16,9 @@ class PostgresAuthTokenRepository[F[_]: Async](implicit tr: Transactor[F]) exten
 
   override def save(
     userId: User.Id,
-    tokenHash: Hash): F[Unit] =
-    sql"INSERT INTO user_session (user_id, token_hash) VALUES ($userId, $tokenHash)".update.run
+    tokenHash: Hash,
+    createdAt: Instant): F[Unit] =
+    sql"INSERT INTO user_session (user_id, token_hash, created_at) VALUES ($userId, $tokenHash, $createdAt)".update.run
       .transact(tr)
       .void
 

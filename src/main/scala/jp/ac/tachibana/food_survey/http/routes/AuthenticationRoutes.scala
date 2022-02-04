@@ -34,16 +34,20 @@ class AuthenticationRoutes[F[_]: Async](
     }
   }
 
-  private val test = AuthedRoutes.of[(AuthToken, User.Id), F] { case POST -> Root / "test" as (token, userId) =>
-    Ok(userId.value)
-  }
+  private val tokenRoutes = AuthedRoutes.of[(AuthToken, User.Id), F] {
+    // todo: remove
+    case POST -> Root / "test" as (_, userId) =>
+      Ok(userId.value)
 
-  private val logout = AuthedRoutes.of[(AuthToken, User.Id), F] { case POST -> Root / "logout" as (token, _) =>
-    authenticationService.logout(token) >> Ok().map(_.removeCookie(authenticationTokenCookieName))
+    case GET -> Root / "check" as _ =>
+      Ok()
+
+    case POST -> Root / "logout" as (token, _) =>
+      authenticationService.logout(token) >> Ok().map(_.removeCookie(authenticationTokenCookieName))
   }
 
   private val baseRoutes =
-    login <+> authenticationMiddleware.accessMiddleware(test <+> logout)
+    login <+> authenticationMiddleware.middleware(tokenRoutes)
 
   override def routes: HttpRoutes[F] =
     Router[F]("auth" -> baseRoutes)

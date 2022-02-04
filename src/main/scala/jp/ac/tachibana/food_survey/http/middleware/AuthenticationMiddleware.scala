@@ -25,30 +25,25 @@ class AuthenticationMiddleware[F[_]: Monad](
   authenticationService: AuthenticationService[F])
     extends Http4sDslBinCompat[F]:
 
-  private val authenticate: Kleisli[F, Request[F], Either[AuthenticationMiddleware.AuthenticationError, (AuthToken, User.Id)]] =
+  private val authenticate: Kleisli[OptionT[F, *], Request[F], (AuthToken, User.Id)] =
     Kleisli { request =>
-      request.cookies
-        .find(_.name === authenticationTokenCookieName)
-        .traverse { cookie =>
-          val authToken = AuthToken(cookie.content)
-          authenticationService
-            .authenticate(authToken)
-            .map(_.bimap(_ => AuthenticationMiddleware.AuthenticationError.InvalidCredentials, (authToken, _)))
-        }
-        .map(_.toRight(AuthenticationMiddleware.AuthenticationError.InvalidCredentials).flatten)
+      OptionT(
+        request.cookies
+          .find(_.name === authenticationTokenCookieName)
+          .traverse { cookie =>
+            val authToken = AuthToken(cookie.content)
+            authenticationService
+              .authenticate(authToken)
+              .map(_.bimap(_ => AuthenticationMiddleware.AuthenticationError.InvalidCredentials, (authToken, _)))
+          }
+          .map(_.toRight(AuthenticationMiddleware.AuthenticationError.InvalidCredentials).flatten.toOption)
+      )
     }
 
-  val accessMiddleware: AuthMiddleware[F, (AuthToken, User.Id)] =
-    AuthMiddleware(
-      authUser = authenticate,
-      onFailure = AuthedRoutes.of[AuthenticationMiddleware.AuthenticationError, F] { case _ as error =>
-        error match {
-          case AuthenticationMiddleware.AuthenticationError.InvalidCredentials =>
-            Forbidden()
-        }
-      }
-    )
+  val middleware: AuthMiddleware[F, (AuthToken, User.Id)] =
+    AuthMiddleware.withFallThrough(authenticate)
 
+  // todo: ttl
   def withAuthCookie(
     response: Response[F],
     token: AuthToken): Response[F] =

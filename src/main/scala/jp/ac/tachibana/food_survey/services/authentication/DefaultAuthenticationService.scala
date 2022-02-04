@@ -1,7 +1,9 @@
 package jp.ac.tachibana.food_survey.services.authentication
 
+import java.time.Instant
+
 import cats.Monad
-import cats.effect.Sync
+import cats.effect.{Clock, Sync}
 import cats.syntax.either.*
 import cats.syntax.flatMap.*
 import cats.syntax.functor.*
@@ -11,7 +13,7 @@ import jp.ac.tachibana.food_survey.persistence.authentication.AuthTokenRepositor
 import jp.ac.tachibana.food_survey.services.authentication.domain.AuthToken
 import jp.ac.tachibana.food_survey.util.crypto.{CryptoHasher, Hash, TokenHasher}
 
-class DefaultAuthenticationService[F[_]: Monad](
+class DefaultAuthenticationService[F[_]: Monad: Clock](
   cryptoHasher: CryptoHasher[F],
   tokenHasher: TokenHasher[F],
   tokenGenerator: AuthTokenGenerator[F],
@@ -21,11 +23,13 @@ class DefaultAuthenticationService[F[_]: Monad](
   override def login(
     username: String,
     password: String): F[Either[AuthenticationService.LoginError, AuthToken]] =
-    // todo: fetch by username
+    // todo: fetch user by user id
+    // todo: remove tokens if there are too many
     for {
       authToken <- tokenGenerator.generate
       authTokenHash <- tokenHasher.hash(authToken)
-      _ <- authTokenRepository.save(User.Id("test"), authTokenHash)
+      createdAt <- Clock[F].realTime
+      _ <- authTokenRepository.save(User.Id("test"), authTokenHash, Instant.ofEpochMilli(createdAt.toMillis))
     } yield authToken.asRight
 
   override def authenticate(token: AuthToken): F[Either[AuthenticationService.AuthenticationError, User.Id]] =

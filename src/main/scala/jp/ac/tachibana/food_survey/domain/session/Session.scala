@@ -8,8 +8,6 @@ sealed trait Session
 
 object Session:
 
-  case object NotStarted extends Session
-
   case class AwaitingUsers(
     joinedUsers: List[User.Respondent],
     waitingForUsers: NonEmptyList[User.Respondent],

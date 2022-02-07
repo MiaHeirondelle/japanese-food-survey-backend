@@ -46,6 +46,7 @@ lazy val root = project
         } ++ Seq(
         "org.http4s"                 %% "http4s-blaze-server" % Versions.http4s,
         "org.http4s"                 %% "http4s-dsl"          % Versions.http4s,
+        "org.http4s"                 %% "http4s-circe"        % Versions.http4s,
         "com.github.pureconfig"      %% "pureconfig-core"     % Versions.pureconfig,
         "org.tpolecat"               %% "doobie-postgres"     % Versions.doobie,
         "org.tpolecat"               %% "doobie-hikari"       % Versions.doobie,

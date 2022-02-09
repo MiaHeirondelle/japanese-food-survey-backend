@@ -29,4 +29,4 @@ class SessionRoutes[F[_]: Async](
     }
 
   override val routes: HttpRoutes[F] =
-    Router[F]("session" -> authenticationMiddleware.middleware(baseRoutes))
+    Router[F]("session" -> authenticationMiddleware.globalMiddleware(baseRoutes))

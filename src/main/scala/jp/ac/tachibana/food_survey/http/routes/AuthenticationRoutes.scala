@@ -38,6 +38,7 @@ class AuthenticationRoutes[F[_]: Async](
 
   private val tokenRoutes = AuthedRoutes.of[AuthDetails, F] {
     case GET -> Root / "check" as details =>
+      println(details)
       Ok(UserAuthenticatedResponse.fromDomain(details.user))
 
     case POST -> Root / "logout" as details =>
@@ -45,7 +46,7 @@ class AuthenticationRoutes[F[_]: Async](
   }
 
   private val baseRoutes =
-    login <+> authenticationMiddleware.middleware(tokenRoutes)
+    login <+> authenticationMiddleware.adminOnlyMiddleware(tokenRoutes)
 
   override val routes: HttpRoutes[F] =
     Router[F]("auth" -> baseRoutes)

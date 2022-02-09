@@ -54,6 +54,7 @@ class AuthenticationMiddleware[F[_]: Monad](
       onFailure = authFailureHandler
     )
 
+  // todo: transform auth details to admin user?
   val adminOnlyMiddleware: AuthMiddleware[F, AuthDetails] =
     AuthMiddleware(
       authUser = authenticate(adminOnlyFilter),

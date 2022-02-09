@@ -10,7 +10,7 @@ import cats.syntax.functor.*
 
 import jp.ac.tachibana.food_survey.domain.user.User
 import jp.ac.tachibana.food_survey.persistence.auth.AuthTokenRepository
-import jp.ac.tachibana.food_survey.services.auth.domain.AuthToken
+import jp.ac.tachibana.food_survey.services.auth.domain.{AuthDetails, AuthToken}
 import jp.ac.tachibana.food_survey.util.crypto.{CryptoHasher, Hash, TokenHasher}
 
 class DefaultAuthenticationService[F[_]: Monad: Clock](
@@ -22,21 +22,24 @@ class DefaultAuthenticationService[F[_]: Monad: Clock](
 
   override def login(
     username: String,
-    password: String): F[Either[AuthenticationService.LoginError, AuthToken]] =
+    password: String): F[Either[AuthenticationService.LoginError, AuthDetails]] =
     // todo: fetch user by user id
     // todo: remove tokens if there are too many
     for {
       authToken <- tokenGenerator.generate
       authTokenHash <- tokenHasher.hash(authToken)
       createdAt <- Clock[F].realTime
-      _ <- authTokenRepository.save(User.Id("test"), authTokenHash, Instant.ofEpochMilli(createdAt.toMillis))
-    } yield authToken.asRight
+      userId = User.Id("test")
+      _ <- authTokenRepository.save(userId, authTokenHash, Instant.ofEpochMilli(createdAt.toMillis))
+    } yield AuthDetails(authToken, User.Admin(userId, "test_name")).asRight
 
-  override def authenticate(token: AuthToken): F[Either[AuthenticationService.AuthenticationError, User.Id]] =
+  override def authenticate(token: AuthToken): F[Either[AuthenticationService.AuthenticationError, User]] =
     for {
+      // todo: fetch user by user id
       tokenHash <- tokenHasher.hash(token)
       userId <- authTokenRepository.load(tokenHash)
-    } yield userId.toRight(AuthenticationService.AuthenticationError.UserNotFound)
+      user = userId.map(User.Admin(_, "test_name"))
+    } yield user.toRight(AuthenticationService.AuthenticationError.UserNotFound)
 
   override def logout(token: AuthToken): F[Unit] =
     for {

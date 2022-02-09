@@ -1,4 +1,4 @@
-package jp.ac.tachibana.food_survey.services.authentication.domain
+package jp.ac.tachibana.food_survey.services.auth.domain
 
 opaque type AuthToken = String
 

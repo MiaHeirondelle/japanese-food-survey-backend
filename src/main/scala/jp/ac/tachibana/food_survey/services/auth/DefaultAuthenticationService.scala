@@ -1,4 +1,4 @@
-package jp.ac.tachibana.food_survey.services.authentication
+package jp.ac.tachibana.food_survey.services.auth
 
 import java.time.Instant
 
@@ -9,8 +9,8 @@ import cats.syntax.flatMap.*
 import cats.syntax.functor.*
 
 import jp.ac.tachibana.food_survey.domain.user.User
-import jp.ac.tachibana.food_survey.persistence.authentication.AuthTokenRepository
-import jp.ac.tachibana.food_survey.services.authentication.domain.AuthToken
+import jp.ac.tachibana.food_survey.persistence.auth.AuthTokenRepository
+import jp.ac.tachibana.food_survey.services.auth.domain.AuthToken
 import jp.ac.tachibana.food_survey.util.crypto.{CryptoHasher, Hash, TokenHasher}
 
 class DefaultAuthenticationService[F[_]: Monad: Clock](

@@ -5,7 +5,7 @@ import java.security.MessageDigest
 
 import cats.effect.Sync
 
-import jp.ac.tachibana.food_survey.services.authentication.domain.AuthToken
+import jp.ac.tachibana.food_survey.services.auth.domain.AuthToken
 
 class TokenHasher[F[_]: Sync]:
 

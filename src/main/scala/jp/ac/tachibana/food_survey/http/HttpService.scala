@@ -24,6 +24,8 @@ class HttpService[F[_]: Async](
 
   private val httpApp: HttpApp[F] =
     withCORS(
+      // It's important that routes that do not require authentication go first.
+      // Otherwise, the service will short-circuit with a 409 error.
       (authenticationRoutes.routes <+> routes
         .map(_.routes)
         .fold(HttpRoutes.empty[F])(_ <+> _)).orNotFound)

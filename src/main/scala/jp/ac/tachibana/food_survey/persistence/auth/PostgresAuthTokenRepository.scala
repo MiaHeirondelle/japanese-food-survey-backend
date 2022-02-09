@@ -1,4 +1,4 @@
-package jp.ac.tachibana.food_survey.persistence.authentication
+package jp.ac.tachibana.food_survey.persistence.auth
 
 import java.time.Instant
 

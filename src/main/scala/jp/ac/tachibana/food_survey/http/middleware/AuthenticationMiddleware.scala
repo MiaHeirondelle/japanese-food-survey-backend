@@ -17,31 +17,37 @@ import jp.ac.tachibana.food_survey.configuration.domain.http.HttpAuthenticationC
 import jp.ac.tachibana.food_survey.domain.user.User
 import jp.ac.tachibana.food_survey.http
 import jp.ac.tachibana.food_survey.http.middleware.AuthenticationMiddleware.authenticationTokenCookieName
-import jp.ac.tachibana.food_survey.services.authentication.AuthenticationService
-import jp.ac.tachibana.food_survey.services.authentication.domain.AuthToken
+import jp.ac.tachibana.food_survey.services.auth.AuthenticationService
+import jp.ac.tachibana.food_survey.services.auth.domain.AuthToken
 
 class AuthenticationMiddleware[F[_]: Monad](
   authenticationConfig: HttpAuthenticationConfig,
   authenticationService: AuthenticationService[F])
     extends Http4sDslBinCompat[F]:
 
-  private val authenticate: Kleisli[OptionT[F, *], Request[F], (AuthToken, User.Id)] =
+  private val authenticate: Kleisli[F, Request[F], Either[AuthenticationMiddleware.AuthenticationError, (AuthToken, User.Id)]] =
     Kleisli { request =>
-      OptionT(
-        request.cookies
-          .find(_.name === authenticationTokenCookieName)
-          .traverse { cookie =>
-            val authToken = AuthToken(cookie.content)
-            authenticationService
-              .authenticate(authToken)
-              .map(_.bimap(_ => AuthenticationMiddleware.AuthenticationError.InvalidCredentials, (authToken, _)))
-          }
-          .map(_.toRight(AuthenticationMiddleware.AuthenticationError.InvalidCredentials).flatten.toOption)
-      )
+      request.cookies
+        .find(_.name === authenticationTokenCookieName)
+        .traverse { cookie =>
+          val authToken = AuthToken(cookie.content)
+          authenticationService
+            .authenticate(authToken)
+            .map(_.bimap(_ => AuthenticationMiddleware.AuthenticationError.InvalidCredentials, (authToken, _)))
+        }
+        .map(_.toRight(AuthenticationMiddleware.AuthenticationError.InvalidCredentials).flatten)
     }
 
   val middleware: AuthMiddleware[F, (AuthToken, User.Id)] =
-    AuthMiddleware.withFallThrough(authenticate)
+    AuthMiddleware(
+      authUser = authenticate,
+      onFailure = AuthedRoutes.of[AuthenticationMiddleware.AuthenticationError, F] { case _ as error =>
+        error match {
+          case AuthenticationMiddleware.AuthenticationError.InvalidCredentials =>
+            Forbidden()
+        }
+      }
+    )
 
   // todo: ttl
   def withAuthCookie(
@@ -68,11 +74,6 @@ class AuthenticationMiddleware[F[_]: Monad](
 object AuthenticationMiddleware:
 
   val authenticationTokenCookieName = "JFSBSESSIONID"
-
-  sealed trait LoginError
-
-  object LoginError:
-    case object InvalidCredentials extends AuthenticationMiddleware.LoginError
 
   sealed trait AuthenticationError
 

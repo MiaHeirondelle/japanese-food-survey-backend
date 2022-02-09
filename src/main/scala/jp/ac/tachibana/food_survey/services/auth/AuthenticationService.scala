@@ -1,13 +1,13 @@
 package jp.ac.tachibana.food_survey.services.auth
 
 import jp.ac.tachibana.food_survey.domain.user.User
-import jp.ac.tachibana.food_survey.services.auth.domain.AuthToken
+import jp.ac.tachibana.food_survey.services.auth.domain.{AuthDetails, AuthToken}
 
 trait AuthenticationService[F[_]]:
 
   def login(
     username: String,
-    password: String): F[Either[AuthenticationService.LoginError, AuthToken]]
+    password: String): F[Either[AuthenticationService.LoginError, AuthDetails]]
 
   def authenticate(token: AuthToken): F[Either[AuthenticationService.AuthenticationError, User]]
 

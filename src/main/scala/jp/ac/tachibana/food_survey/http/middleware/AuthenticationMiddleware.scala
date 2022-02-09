@@ -18,15 +18,14 @@ import jp.ac.tachibana.food_survey.domain.user.User
 import jp.ac.tachibana.food_survey.http
 import jp.ac.tachibana.food_survey.http.middleware.AuthenticationMiddleware.authenticationTokenCookieName
 import jp.ac.tachibana.food_survey.services.auth.AuthenticationService
-import jp.ac.tachibana.food_survey.services.auth.domain.AuthToken
+import jp.ac.tachibana.food_survey.services.auth.domain.{AuthDetails, AuthToken}
 
 class AuthenticationMiddleware[F[_]: Monad](
   authenticationConfig: HttpAuthenticationConfig,
   authenticationService: AuthenticationService[F])
     extends Http4sDslBinCompat[F]:
 
-  private val authenticate
-    : Kleisli[F, Request[F], Either[AuthenticationMiddleware.AuthenticationError, AuthenticationMiddleware.AuthDetails]] =
+  private val authenticate: Kleisli[F, Request[F], Either[AuthenticationMiddleware.AuthenticationError, AuthDetails]] =
     Kleisli { request =>
       request.cookies
         .find(_.name === authenticationTokenCookieName)
@@ -34,16 +33,13 @@ class AuthenticationMiddleware[F[_]: Monad](
           val authToken = AuthToken(cookie.content)
           authenticationService
             .authenticate(authToken)
-            .map(
-              _.bimap(
-                _ => AuthenticationMiddleware.AuthenticationError.InvalidCredentials,
-                AuthenticationMiddleware.AuthDetails(authToken, _)))
+            .map(_.bimap(_ => AuthenticationMiddleware.AuthenticationError.InvalidCredentials, AuthDetails(authToken, _)))
         }
         .map(_.toRight(AuthenticationMiddleware.AuthenticationError.InvalidCredentials).flatten)
     }
 
   // todo: fast middleware that doesn't load the user?
-  val middleware: AuthMiddleware[F, AuthenticationMiddleware.AuthDetails] =
+  val middleware: AuthMiddleware[F, AuthDetails] =
     AuthMiddleware(
       authUser = authenticate,
       onFailure = AuthedRoutes.of[AuthenticationMiddleware.AuthenticationError, F] { case _ as error =>
@@ -77,10 +73,6 @@ class AuthenticationMiddleware[F[_]: Monad](
     )
 
 object AuthenticationMiddleware:
-
-  case class AuthDetails(
-    token: AuthToken,
-    user: User)
 
   val authenticationTokenCookieName = "JFSBSESSIONID"
 

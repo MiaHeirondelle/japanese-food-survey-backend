@@ -1,9 +1,11 @@
 package jp.ac.tachibana.food_survey.http.routes
 
 import cats.effect.Async
-import cats.syntax.functor.*
 import cats.syntax.flatMap.*
+import cats.syntax.functor.*
 import cats.syntax.semigroupk.*
+import org.http4s.FormDataDecoder.formEntityDecoder
+import org.http4s.circe.CirceEntityEncoder.*
 import org.http4s.dsl.Http4sDslBinCompat
 import org.http4s.server.Router
 import org.http4s.{AuthedRoutes, HttpRoutes, ResponseCookie, SameSite}
@@ -12,11 +14,9 @@ import jp.ac.tachibana.food_survey.domain.user.User
 import jp.ac.tachibana.food_survey.http.HttpService
 import jp.ac.tachibana.food_survey.http.middleware.AuthenticationMiddleware
 import jp.ac.tachibana.food_survey.http.middleware.AuthenticationMiddleware.authenticationTokenCookieName
-import org.http4s.FormDataDecoder.formEntityDecoder
-
-import jp.ac.tachibana.food_survey.http.model.auth.LoginForm
+import jp.ac.tachibana.food_survey.http.model.auth.{LoginForm, UserAuthenticatedResponse}
 import jp.ac.tachibana.food_survey.services.auth.AuthenticationService
-import jp.ac.tachibana.food_survey.services.auth.domain.AuthToken
+import jp.ac.tachibana.food_survey.services.auth.domain.AuthDetails
 
 class AuthenticationRoutes[F[_]: Async](
   authenticationMiddleware: AuthenticationMiddleware[F],
@@ -28,19 +28,17 @@ class AuthenticationRoutes[F[_]: Async](
       authenticationService
         .login(form.login, form.password)
         .flatMap {
-          case Left(_)      => Forbidden()
-          case Right(token) => Ok().map(r => authenticationMiddleware.withAuthCookie(response = r, token = token))
+          case Left(_) => Forbidden()
+          case Right(details) =>
+            Ok(UserAuthenticatedResponse.fromDomain(details.user)).map(r =>
+              authenticationMiddleware.withAuthCookie(response = r, token = details.token))
         }
     }
   }
 
-  private val tokenRoutes = AuthedRoutes.of[AuthenticationMiddleware.AuthDetails, F] {
-    // todo: remove
-    case POST -> Root / "test" as details =>
-      Ok(details.user.id.value)
-
-    case GET -> Root / "check" as _ =>
-      Ok()
+  private val tokenRoutes = AuthedRoutes.of[AuthDetails, F] {
+    case GET -> Root / "check" as details =>
+      Ok(UserAuthenticatedResponse.fromDomain(details.user))
 
     case POST -> Root / "logout" as details =>
       authenticationService.logout(details.token) >> Ok().map(_.removeCookie(authenticationTokenCookieName))

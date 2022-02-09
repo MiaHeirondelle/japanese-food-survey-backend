@@ -2,6 +2,8 @@ enablePlugins(JavaAppPackaging)
 
 val Versions = new {
   val http4s = "0.23.7"
+  // Make sure to match the circe version with the one provided by http4s.
+  val circe = "0.14.1"
   val pureconfig = "0.17.1"
   val doobie = "1.0.0-RC1"
   val flyway = "8.4.0"

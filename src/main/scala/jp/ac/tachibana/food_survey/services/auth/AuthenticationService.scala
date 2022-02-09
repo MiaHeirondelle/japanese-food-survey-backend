@@ -1,7 +1,7 @@
-package jp.ac.tachibana.food_survey.services.authentication
+package jp.ac.tachibana.food_survey.services.auth
 
 import jp.ac.tachibana.food_survey.domain.user.User
-import jp.ac.tachibana.food_survey.services.authentication.domain.AuthToken
+import jp.ac.tachibana.food_survey.services.auth.domain.AuthToken
 
 trait AuthenticationService[F[_]]:
 

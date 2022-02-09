@@ -15,8 +15,8 @@ import jp.ac.tachibana.food_survey.http.middleware.AuthenticationMiddleware.auth
 import org.http4s.FormDataDecoder.formEntityDecoder
 
 import jp.ac.tachibana.food_survey.http.model.auth.LoginForm
-import jp.ac.tachibana.food_survey.services.authentication.AuthenticationService
-import jp.ac.tachibana.food_survey.services.authentication.domain.AuthToken
+import jp.ac.tachibana.food_survey.services.auth.AuthenticationService
+import jp.ac.tachibana.food_survey.services.auth.domain.AuthToken
 
 class AuthenticationRoutes[F[_]: Async](
   authenticationMiddleware: AuthenticationMiddleware[F],
@@ -49,5 +49,5 @@ class AuthenticationRoutes[F[_]: Async](
   private val baseRoutes =
     login <+> authenticationMiddleware.middleware(tokenRoutes)
 
-  override def routes: HttpRoutes[F] =
+  override val routes: HttpRoutes[F] =
     Router[F]("auth" -> baseRoutes)

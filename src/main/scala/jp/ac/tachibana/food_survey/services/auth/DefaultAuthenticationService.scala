@@ -32,11 +32,13 @@ class DefaultAuthenticationService[F[_]: Monad: Clock](
       _ <- authTokenRepository.save(User.Id("test"), authTokenHash, Instant.ofEpochMilli(createdAt.toMillis))
     } yield authToken.asRight
 
-  override def authenticate(token: AuthToken): F[Either[AuthenticationService.AuthenticationError, User.Id]] =
+  override def authenticate(token: AuthToken): F[Either[AuthenticationService.AuthenticationError, User]] =
     for {
+      // todo: fetch user by user id
       tokenHash <- tokenHasher.hash(token)
       userId <- authTokenRepository.load(tokenHash)
-    } yield userId.toRight(AuthenticationService.AuthenticationError.UserNotFound)
+      user = userId.map(User.Admin(_, "test_name"))
+    } yield user.toRight(AuthenticationService.AuthenticationError.UserNotFound)
 
   override def logout(token: AuthToken): F[Unit] =
     for {

@@ -25,7 +25,8 @@ class AuthenticationMiddleware[F[_]: Monad](
   authenticationService: AuthenticationService[F])
     extends Http4sDslBinCompat[F]:
 
-  private val authenticate: Kleisli[F, Request[F], Either[AuthenticationMiddleware.AuthenticationError, (AuthToken, User.Id)]] =
+  private val authenticate
+    : Kleisli[F, Request[F], Either[AuthenticationMiddleware.AuthenticationError, AuthenticationMiddleware.AuthDetails]] =
     Kleisli { request =>
       request.cookies
         .find(_.name === authenticationTokenCookieName)
@@ -33,12 +34,16 @@ class AuthenticationMiddleware[F[_]: Monad](
           val authToken = AuthToken(cookie.content)
           authenticationService
             .authenticate(authToken)
-            .map(_.bimap(_ => AuthenticationMiddleware.AuthenticationError.InvalidCredentials, (authToken, _)))
+            .map(
+              _.bimap(
+                _ => AuthenticationMiddleware.AuthenticationError.InvalidCredentials,
+                AuthenticationMiddleware.AuthDetails(authToken, _)))
         }
         .map(_.toRight(AuthenticationMiddleware.AuthenticationError.InvalidCredentials).flatten)
     }
 
-  val middleware: AuthMiddleware[F, (AuthToken, User.Id)] =
+  // todo: fast middleware that doesn't load the user?
+  val middleware: AuthMiddleware[F, AuthenticationMiddleware.AuthDetails] =
     AuthMiddleware(
       authUser = authenticate,
       onFailure = AuthedRoutes.of[AuthenticationMiddleware.AuthenticationError, F] { case _ as error =>
@@ -72,6 +77,10 @@ class AuthenticationMiddleware[F[_]: Monad](
     )
 
 object AuthenticationMiddleware:
+
+  case class AuthDetails(
+    token: AuthToken,
+    user: User)
 
   val authenticationTokenCookieName = "JFSBSESSIONID"
 

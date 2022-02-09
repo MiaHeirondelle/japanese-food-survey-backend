@@ -9,7 +9,7 @@ trait AuthenticationService[F[_]]:
     username: String,
     password: String): F[Either[AuthenticationService.LoginError, AuthToken]]
 
-  def authenticate(token: AuthToken): F[Either[AuthenticationService.AuthenticationError, User.Id]]
+  def authenticate(token: AuthToken): F[Either[AuthenticationService.AuthenticationError, User]]
 
   def logout(token: AuthToken): F[Unit]
 

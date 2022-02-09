@@ -34,16 +34,16 @@ class AuthenticationRoutes[F[_]: Async](
     }
   }
 
-  private val tokenRoutes = AuthedRoutes.of[(AuthToken, User.Id), F] {
+  private val tokenRoutes = AuthedRoutes.of[AuthenticationMiddleware.AuthDetails, F] {
     // todo: remove
-    case POST -> Root / "test" as (_, userId) =>
-      Ok(userId.value)
+    case POST -> Root / "test" as details =>
+      Ok(details.user.id.value)
 
     case GET -> Root / "check" as _ =>
       Ok()
 
-    case POST -> Root / "logout" as (token, _) =>
-      authenticationService.logout(token) >> Ok().map(_.removeCookie(authenticationTokenCookieName))
+    case POST -> Root / "logout" as details =>
+      authenticationService.logout(details.token) >> Ok().map(_.removeCookie(authenticationTokenCookieName))
   }
 
   private val baseRoutes =

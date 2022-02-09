@@ -22,7 +22,7 @@ class SessionRoutes[F[_]: Async](
   sessionService: SessionService[F])
     extends HttpService.Routes[F] with Http4sDslBinCompat[F]:
 
-  private val baseRoutes: AuthedRoutes[(AuthToken, User.Id), F] =
+  private val baseRoutes: AuthedRoutes[AuthenticationMiddleware.AuthDetails, F] =
     AuthedRoutes.of { case GET -> Root / "status" as _ =>
       for {
         sessionOpt <- sessionService.getActiveSession

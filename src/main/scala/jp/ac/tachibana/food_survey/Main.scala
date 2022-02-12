@@ -6,7 +6,7 @@ import doobie.Transactor
 import jp.ac.tachibana.food_survey.configuration.domain.ApplicationConfig
 import jp.ac.tachibana.food_survey.http.HttpService
 import jp.ac.tachibana.food_survey.http.middleware.AuthenticationMiddleware
-import jp.ac.tachibana.food_survey.http.routes.{AuthenticationRoutes, SessionRoutes}
+import jp.ac.tachibana.food_survey.http.routes.{AuthenticationRoutes, SessionRoutes, UserRoutes}
 import jp.ac.tachibana.food_survey.persistence.DatabaseTransactor
 import jp.ac.tachibana.food_survey.persistence.auth.PostgresAuthTokenRepository
 import jp.ac.tachibana.food_survey.persistence.domain.session.PostgresSessionRepository
@@ -34,7 +34,8 @@ object Main extends IOApp.Simple:
           httpService = new HttpService[IO](
             config = appConfig.http,
             authenticationRoutes = new AuthenticationRoutes[IO](authenticationMiddleware, authenticationService),
-            new SessionRoutes[IO](authenticationMiddleware, sessionService)
+            new SessionRoutes[IO](authenticationMiddleware, sessionService),
+            new UserRoutes[IO](authenticationMiddleware)
           )
           start <- httpService.start(runtime.compute)
         } yield start

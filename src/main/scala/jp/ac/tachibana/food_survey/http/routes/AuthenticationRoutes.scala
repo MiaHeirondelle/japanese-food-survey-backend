@@ -46,7 +46,7 @@ class AuthenticationRoutes[F[_]: Async](
   }
 
   private val baseRoutes =
-    login <+> authenticationMiddleware.adminOnlyMiddleware(tokenRoutes)
+    login <+> authenticationMiddleware.globalMiddleware(tokenRoutes)
 
   override val routes: HttpRoutes[F] =
     Router[F]("auth" -> baseRoutes)

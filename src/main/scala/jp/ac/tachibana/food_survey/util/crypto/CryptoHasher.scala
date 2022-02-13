@@ -27,7 +27,7 @@ class CryptoHasher[F[_]: Sync](
     salt: Salt): F[Boolean] =
     computeHash(string, salt).map(_.value === hash.value)
 
-  private def computeHash(
+  def computeHash(
     string: String,
     salt: Salt): F[Hash] =
     Sync[F].delay {

@@ -1,9 +1,11 @@
 package jp.ac.tachibana.food_survey.services.auth
 
 import jp.ac.tachibana.food_survey.domain.user.User
-import jp.ac.tachibana.food_survey.services.auth.domain.{AuthDetails, AuthToken}
+import jp.ac.tachibana.food_survey.services.auth.domain.{AuthDetails, AuthToken, HashedUserCredentials}
 
 trait AuthenticationService[F[_]]:
+
+  def saveCredentials(credentials: HashedUserCredentials): F[Unit]
 
   def login(
     username: String,

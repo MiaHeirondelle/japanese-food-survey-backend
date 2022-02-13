@@ -5,6 +5,8 @@ import io.circe.Encoder
 import jp.ac.tachibana.food_survey.domain.user.User
 import org.http4s.{ParseFailure, QueryParamDecoder}
 
+import jp.ac.tachibana.food_survey.domain.user.User.Role
+
 enum UserRoleFormat:
   case Respondent, Admin
 
@@ -22,11 +24,11 @@ object UserRoleFormat:
     }
 
   def fromDomain(user: User): UserRoleFormat =
-    user match {
-      case _: User.Admin =>
-        UserRoleFormat.Admin
-      case _: User.Respondent =>
+    user.role match {
+      case Role.Respondent =>
         UserRoleFormat.Respondent
+      case Role.Admin =>
+        UserRoleFormat.Admin
     }
 
   def fromString(value: String): Option[UserRoleFormat] =

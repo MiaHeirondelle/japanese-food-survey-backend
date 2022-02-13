@@ -9,9 +9,9 @@ import jp.ac.tachibana.food_survey.http.middleware.AuthenticationMiddleware
 import jp.ac.tachibana.food_survey.http.routes.{AuthenticationRoutes, SessionRoutes, UserRoutes}
 import jp.ac.tachibana.food_survey.persistence.DatabaseTransactor
 import jp.ac.tachibana.food_survey.persistence.auth.PostgresAuthTokenRepository
-import jp.ac.tachibana.food_survey.persistence.domain.session.PostgresSessionRepository
+import jp.ac.tachibana.food_survey.persistence.session.PostgresSessionRepository
 import jp.ac.tachibana.food_survey.services.auth.DefaultAuthenticationService
-import jp.ac.tachibana.food_survey.services.domain.session.DefaultSessionService
+import jp.ac.tachibana.food_survey.services.session.DefaultSessionService
 
 object Main extends IOApp.Simple:
 

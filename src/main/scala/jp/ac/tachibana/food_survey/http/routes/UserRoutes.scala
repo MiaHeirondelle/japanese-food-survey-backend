@@ -9,10 +9,10 @@ import org.http4s.{AuthedRoutes, HttpRoutes}
 
 import jp.ac.tachibana.food_survey.http.HttpService
 import jp.ac.tachibana.food_survey.http.middleware.AuthenticationMiddleware
-import jp.ac.tachibana.food_survey.http.model.domain.session.SessionResponse
+import jp.ac.tachibana.food_survey.http.model.session.SessionResponse
 import jp.ac.tachibana.food_survey.http.model.user.CreateUserForm
 import jp.ac.tachibana.food_survey.services.auth.domain.AuthDetails
-import jp.ac.tachibana.food_survey.services.domain.session.SessionService
+import jp.ac.tachibana.food_survey.services.session.SessionService
 
 class UserRoutes[F[_]: Async](authenticationMiddleware: AuthenticationMiddleware[F])
     extends HttpService.Routes[F] with Http4sDslBinCompat[F]:

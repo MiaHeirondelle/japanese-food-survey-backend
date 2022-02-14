@@ -8,8 +8,9 @@ import jp.ac.tachibana.food_survey.http.HttpService
 import jp.ac.tachibana.food_survey.http.middleware.AuthenticationMiddleware
 import jp.ac.tachibana.food_survey.http.routes.{AuthenticationRoutes, SessionRoutes, UserRoutes}
 import jp.ac.tachibana.food_survey.persistence.DatabaseTransactor
-import jp.ac.tachibana.food_survey.persistence.auth.PostgresAuthTokenRepository
+import jp.ac.tachibana.food_survey.persistence.auth.{PostgresAuthTokenRepository, PostgresCredentialsRepository}
 import jp.ac.tachibana.food_survey.persistence.session.PostgresSessionRepository
+import jp.ac.tachibana.food_survey.persistence.user.PostgresUserRepository
 import jp.ac.tachibana.food_survey.services.auth.DefaultAuthenticationService
 import jp.ac.tachibana.food_survey.services.session.DefaultSessionService
 
@@ -22,9 +23,12 @@ object Main extends IOApp.Simple:
       result <- DatabaseTransactor.start[IO](appConfig.persistence).use { (tr: Transactor[IO]) =>
         implicit val transactor: Transactor[IO] = tr
         val authTokenRepository = new PostgresAuthTokenRepository[IO]()
+        val credentialsRepository = new PostgresCredentialsRepository[IO]()
         val sessionRepository = new PostgresSessionRepository[IO]()
+        val userRepository = new PostgresUserRepository[IO]()
         for {
-          authenticationService <- DefaultAuthenticationService.create[IO](authTokenRepository)
+          authenticationService <- DefaultAuthenticationService
+            .create[IO](authTokenRepository, credentialsRepository, userRepository)
           sessionService = new DefaultSessionService[IO](sessionRepository)
           authenticationMiddleware =
             new AuthenticationMiddleware[IO](

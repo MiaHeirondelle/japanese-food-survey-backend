@@ -8,5 +8,3 @@ trait UserProgram[F[_]]:
     name: String,
     role: User.Role,
     credentials: UserCredentials): F[User.Id]
-
-  def get(userId: User.Id): F[Option[User]]

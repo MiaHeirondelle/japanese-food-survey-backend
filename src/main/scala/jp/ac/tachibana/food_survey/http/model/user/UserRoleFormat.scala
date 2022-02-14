@@ -6,9 +6,11 @@ import jp.ac.tachibana.food_survey.domain.user.User
 import org.http4s.{ParseFailure, QueryParamDecoder}
 
 import jp.ac.tachibana.food_survey.domain.user.User.Role
+import jp.ac.tachibana.food_survey.http.model.user
 
-enum UserRoleFormat:
-  case Respondent, Admin
+enum UserRoleFormat(val domain: User.Role):
+  case Respondent extends UserRoleFormat(User.Role.Respondent)
+  case Admin extends UserRoleFormat(User.Role.Admin)
 
 object UserRoleFormat:
 

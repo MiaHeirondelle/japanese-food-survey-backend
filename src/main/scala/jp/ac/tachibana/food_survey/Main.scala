@@ -11,8 +11,10 @@ import jp.ac.tachibana.food_survey.persistence.DatabaseTransactor
 import jp.ac.tachibana.food_survey.persistence.auth.{PostgresAuthTokenRepository, PostgresCredentialsRepository}
 import jp.ac.tachibana.food_survey.persistence.session.PostgresSessionRepository
 import jp.ac.tachibana.food_survey.persistence.user.PostgresUserRepository
+import jp.ac.tachibana.food_survey.programs.user.DefaultUserProgram
 import jp.ac.tachibana.food_survey.services.auth.DefaultAuthenticationService
 import jp.ac.tachibana.food_survey.services.session.DefaultSessionService
+import jp.ac.tachibana.food_survey.services.user.DefaultUserService
 
 object Main extends IOApp.Simple:
 
@@ -26,6 +28,7 @@ object Main extends IOApp.Simple:
         val credentialsRepository = new PostgresCredentialsRepository[IO]()
         val sessionRepository = new PostgresSessionRepository[IO]()
         val userRepository = new PostgresUserRepository[IO]()
+
         for {
           authenticationService <- DefaultAuthenticationService
             .create[IO](authTokenRepository, credentialsRepository, userRepository)
@@ -35,11 +38,15 @@ object Main extends IOApp.Simple:
               appConfig.http.authentication,
               authenticationService
             )
+          userService = new DefaultUserService[IO](userRepository)
+
+          userProgram = new DefaultUserProgram[IO](authenticationService, userService)
+
           httpService = new HttpService[IO](
             config = appConfig.http,
             authenticationRoutes = new AuthenticationRoutes[IO](authenticationMiddleware, authenticationService),
             new SessionRoutes[IO](authenticationMiddleware, sessionService),
-            new UserRoutes[IO](authenticationMiddleware)
+            new UserRoutes[IO](authenticationMiddleware, userProgram)
           )
           start <- httpService.start(runtime.compute)
         } yield start

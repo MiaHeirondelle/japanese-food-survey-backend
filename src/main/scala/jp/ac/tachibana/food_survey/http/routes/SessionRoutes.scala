@@ -45,18 +45,32 @@ class SessionRoutes[F[_]: Async](
     }
 
   private def adminOnlyRoutes: AuthedRoutes[AuthDetails.Admin, F] =
-    AuthedRoutes.of { case request @ POST -> Root / "create" as admin =>
-      for {
-        createSessionRequest <- request.req.as[CreateSessionRequest]
-        sessionCreated <- sessionProgram.create(admin.user, createSessionRequest.respondents.map(User.Id(_)))
-        result <- sessionCreated match {
-          case Right(session) =>
-            Ok(SessionResponse.fromDomain(Some(session)))
+    AuthedRoutes.of {
+      case request @ POST -> Root / "create" as admin =>
+        for {
+          createSessionRequest <- request.req.as[CreateSessionRequest]
+          sessionCreated <- sessionProgram.create(admin.user, createSessionRequest.respondents.map(User.Id(_)))
+          result <- sessionCreated match {
+            case Right(session) =>
+              Ok(SessionResponse.fromDomain(Some(session)))
 
-          case Left(_) =>
-            Conflict()
-        }
-      } yield result
+            case Left(_) =>
+              Conflict()
+          }
+        } yield result
+      case POST -> Root / "begin" as admin =>
+        for {
+          sessionBegan <- sessionProgram.begin(admin.user)
+          result <- sessionBegan match {
+            case Right(_) =>
+              Ok()
+
+            case Left(_) =>
+              Conflict()
+          }
+        } yield result
+      case POST -> Root / "stop" as admin =>
+        sessionProgram.stop >> Ok()
     }
 
   override val routes: HttpRoutes[F] =

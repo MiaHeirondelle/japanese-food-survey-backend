@@ -86,8 +86,29 @@ class DefaultSessionService[F[_]: Monad](
       }
       .getOrElse(SessionService.SessionJoinError.WrongSessionStatus.asLeft[Unit])
 
-  override def begin: F[Either[SessionService.SessionBeginError, Session.InProgress]] = ???
+  override def begin(admin: User.Admin): F[Either[SessionService.SessionBeginError, Session.InProgress]] =
+    // todo: check admin the same as creator?
+    OptionT(sessionRepository.getActiveSession)
+      .semiflatMap {
+        case s: Session.CanBegin =>
+          val session = Session.InProgress(
+            joinedUsers = s.joinedUsers,
+            admin = s.admin
+          )
+          sessionRepository
+            .updateActiveSession(
+              session
+            )
+            .as(session.asRight[SessionService.SessionBeginError])
+
+        case _ =>
+          SessionService.SessionBeginError.WrongSessionStatus.asLeft[Session.InProgress].pure[F]
+      }
+      .getOrElse(SessionService.SessionBeginError.WrongSessionStatus.asLeft[Session.InProgress])
 
   override def update: F[Either[SessionService.SessionUpdateError, Session.InProgress]] = ???
 
   override def finish: F[Either[SessionService.SessionFinishError, Session.Finished]] = ???
+
+  override def stop: F[Unit] =
+    sessionRepository.reset

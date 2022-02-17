@@ -73,7 +73,6 @@ class AuthenticationMiddleware[F[_]: Monad](
               case Left(_) =>
                 AuthenticationMiddleware.AuthenticationError.InvalidCredentials.asLeft
               case Right(user) =>
-                println(user)
                 if (userFilter(user))
                   AuthDetails(authToken, user).asRight
                 else

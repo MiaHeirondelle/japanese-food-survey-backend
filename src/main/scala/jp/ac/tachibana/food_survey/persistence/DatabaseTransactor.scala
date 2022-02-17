@@ -25,8 +25,8 @@ object DatabaseTransactor:
       val hikariConfig = new HikariConfig()
       hikariConfig.setDriverClassName(config.driver)
       hikariConfig.setJdbcUrl(config.url)
-      hikariConfig.setUsername(config.user)
-      hikariConfig.setPassword(config.password)
+      hikariConfig.setUsername(config.user.value)
+      hikariConfig.setPassword(config.password.value)
       new HikariDataSource(hikariConfig)
     })(ds => Sync[F].delay(ds.close()))
 

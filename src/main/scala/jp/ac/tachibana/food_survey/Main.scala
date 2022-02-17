@@ -21,7 +21,7 @@ object Main extends IOApp.Simple:
   override def run: IO[Unit] =
     for {
       appConfig <- ApplicationConfig.load[IO]
-      _ <- IO.delay(println(appConfig.http))
+      _ <- IO.delay(println(appConfig))
       result <- DatabaseTransactor.start[IO](appConfig.persistence).use { (tr: Transactor[IO]) =>
         implicit val transactor: Transactor[IO] = tr
         val authTokenRepository = new PostgresAuthTokenRepository[IO]()

@@ -23,8 +23,7 @@ class SessionRoutes[F[_]: Async](
     AuthedRoutes.of { case GET -> Root / "status" as _ =>
       for {
         sessionOpt <- sessionService.getActiveSession
-        response = SessionResponse.fromDomain(sessionOpt)
-        result <- Ok(response)
+        result <- Ok(SessionResponse.fromDomain(sessionOpt))
       } yield result
     }
 

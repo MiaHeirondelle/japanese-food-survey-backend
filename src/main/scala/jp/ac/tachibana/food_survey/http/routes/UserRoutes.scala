@@ -21,9 +21,7 @@ class UserRoutes[F[_]: Async](
   userProgram: UserProgram[F])
     extends HttpService.Routes[F] with Http4sDslBinCompat[F]:
 
-  override val routes: HttpRoutes[F] =
-    Router[F]("user" -> authenticationMiddleware.adminOnlyMiddleware(adminRoutes))
-  private val adminRoutes: AuthedRoutes[AuthDetails, F] =
+  private def adminRoutes: AuthedRoutes[AuthDetails, F] =
     AuthedRoutes.of { case request @ PUT -> Root / "create" as _ =>
       request.req.as[CreateUserForm].flatMap { form =>
         userProgram.create(
@@ -36,3 +34,6 @@ class UserRoutes[F[_]: Async](
         ) >> Created()
       }
     }
+
+  override val routes: HttpRoutes[F] =
+    Router[F]("user" -> authenticationMiddleware.adminOnlyMiddleware(adminRoutes))

@@ -11,3 +11,6 @@ trait SessionRepository[F[_]]:
 
   // todo: no active session error
   def updateActiveSession(session: Session): F[Unit]
+
+  // todo: remove
+  def reset: F[Unit]

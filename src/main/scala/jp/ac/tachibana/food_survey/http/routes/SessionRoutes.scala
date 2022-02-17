@@ -33,8 +33,8 @@ class SessionRoutes[F[_]: Async](
   private def respondentOnlyRoutes: AuthedRoutes[AuthDetails.Respondent, F] =
     AuthedRoutes.of { case POST -> Root / "join" as respondent =>
       for {
-        sessionCreated <- sessionProgram.join(respondent.user)
-        result <- sessionCreated match {
+        sessionJoined <- sessionProgram.join(respondent.user)
+        result <- sessionJoined match {
           case Right(session) =>
             Ok()
 

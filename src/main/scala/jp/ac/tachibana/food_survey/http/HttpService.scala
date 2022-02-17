@@ -43,7 +43,7 @@ class HttpService[F[_]: Async](
       case CorsConfig.CorsEnabled(allowedOrigins) =>
         CORS.policy
           .withAllowOriginHeader(allowedOrigins)
-          .withAllowMethodsIn(Set(Method.OPTIONS, Method.HEAD, Method.GET))
+          .withAllowMethodsIn(Set(Method.OPTIONS, Method.HEAD, Method.GET, Method.POST, Method.PUT))
           .withAllowCredentials(true)
           .apply(service)
       case CorsConfig.CorsDisabled =>

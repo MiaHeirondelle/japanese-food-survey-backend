@@ -1,9 +1,8 @@
 enablePlugins(JavaAppPackaging)
 
 val Versions = new {
+  // Make sure to match the circe version with the one provided by doobie.
   val http4s = "0.23.7"
-  // Make sure to match the circe version with the one provided by http4s.
-  val circe = "0.14.1"
   val pureconfig = "0.17.1"
   val doobie = "1.0.0-RC1"
   val flyway = "8.4.0"
@@ -46,14 +45,15 @@ lazy val root = project
         .filterNot { x =>
           x.organization == "org.scala-lang" && x.name == "scala-compiler"
         } ++ Seq(
-        "org.http4s"                 %% "http4s-blaze-server" % Versions.http4s,
-        "org.http4s"                 %% "http4s-dsl"          % Versions.http4s,
-        "org.http4s"                 %% "http4s-circe"        % Versions.http4s,
-        "com.github.pureconfig"      %% "pureconfig-core"     % Versions.pureconfig,
-        "org.tpolecat"               %% "doobie-postgres"     % Versions.doobie,
-        "org.tpolecat"               %% "doobie-hikari"       % Versions.doobie,
-        "org.flywaydb"                % "flyway-core"         % Versions.flyway,
-        "ch.qos.logback"              % "logback-classic"     % Versions.logback,
-        "com.typesafe.scala-logging" %% "scala-logging"       % Versions.scalaLogging
+        "org.http4s"                 %% "http4s-blaze-server"   % Versions.http4s,
+        "org.http4s"                 %% "http4s-dsl"            % Versions.http4s,
+        "org.http4s"                 %% "http4s-circe"          % Versions.http4s,
+        "com.github.pureconfig"      %% "pureconfig-core"       % Versions.pureconfig,
+        "org.tpolecat"               %% "doobie-postgres"       % Versions.doobie,
+        "org.tpolecat"               %% "doobie-hikari"         % Versions.doobie,
+        "org.tpolecat"               %% "doobie-postgres-circe" % Versions.doobie,
+        "org.flywaydb"                % "flyway-core"           % Versions.flyway,
+        "ch.qos.logback"              % "logback-classic"       % Versions.logback,
+        "com.typesafe.scala-logging" %% "scala-logging"         % Versions.scalaLogging
       )
   )

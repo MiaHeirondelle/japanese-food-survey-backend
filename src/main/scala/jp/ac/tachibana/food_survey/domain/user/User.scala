@@ -1,5 +1,7 @@
 package jp.ac.tachibana.food_survey.domain.user
 
+import cats.Eq
+
 sealed abstract class User(val role: User.Role):
   def id: User.Id
   def name: String
@@ -30,6 +32,10 @@ object User:
       extends User(Role.Admin)
 
   object Id:
+
+    // todo: fix?
+    implicit val eq: Eq[User.Id] =
+      Eq.instance((v1, v2) => v1.value == v2.value)
 
     def apply(userId: String): User.Id = userId
 

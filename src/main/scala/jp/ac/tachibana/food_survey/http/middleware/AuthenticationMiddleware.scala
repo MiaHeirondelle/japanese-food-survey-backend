@@ -32,21 +32,13 @@ class AuthenticationMiddleware[F[_]: Monad](
 
   // todo: fast middleware that doesn't load the user?
   val globalMiddleware: AuthMiddleware[F, AuthDetails] =
-    AuthMiddleware(
-      authUser = authenticate(),
-      onFailure = authFailureHandler
-    )
+    AuthMiddleware.withFallThrough(authUser = authenticate())
+
   val adminOnlyMiddleware: AuthMiddleware[F, AuthDetails.Admin] =
-    AuthMiddleware(
-      authUser = authenticate(adminOnlyAuthDetailsTransformer),
-      onFailure = authFailureHandler
-    )
+    AuthMiddleware.withFallThrough(authUser = authenticate(adminOnlyAuthDetailsTransformer))
 
   val respondentOnlyMiddleware: AuthMiddleware[F, AuthDetails.Respondent] =
-    AuthMiddleware(
-      authUser = authenticate(respondentOnlyAuthDetailsTransformer),
-      onFailure = authFailureHandler
-    )
+    AuthMiddleware.withFallThrough(authUser = authenticate(respondentOnlyAuthDetailsTransformer))
 
   // todo: ttl
   def withAuthCookie(
@@ -72,25 +64,14 @@ class AuthenticationMiddleware[F[_]: Monad](
 
   private def authenticate[A <: AuthDetails](
     authDetailsTransformer: (AuthToken, User) => Option[A] = defaultAuthDetailsTransformer)
-    : Kleisli[F, Request[F], Either[AuthenticationMiddleware.AuthenticationError, A]] =
+    : Kleisli[OptionT[F, *], Request[F], A] =
     Kleisli { request =>
-      request.cookies
-        .find(_.name === authenticationTokenCookieName)
-        .traverse { cookie =>
-          val authToken = AuthToken(cookie.content)
-          authenticationService
-            .authenticate(authToken)
-            .map {
-              case Left(_) =>
-                AuthenticationMiddleware.AuthenticationError.InvalidCredentials.asLeft
-              case Right(user) =>
-                authDetailsTransformer(authToken, user) match {
-                  case Some(details) => details.asRight
-                  case None          => AuthenticationMiddleware.AuthenticationError.AccessDenied.asLeft
-                }
-            }
-        }
-        .map(_.toRight(AuthenticationMiddleware.AuthenticationError.InvalidCredentials).flatten)
+      for {
+        cookie <- OptionT.fromOption(request.cookies.find(_.name === authenticationTokenCookieName))
+        authToken = AuthToken(cookie.content)
+        user <- OptionT(authenticationService.authenticate(authToken).map(_.toOption))
+        result <- OptionT.fromOption(authDetailsTransformer(authToken, user))
+      } yield result
     }
 
   private def authFailureHandler: AuthedRoutes[AuthenticationMiddleware.AuthenticationError, F] =

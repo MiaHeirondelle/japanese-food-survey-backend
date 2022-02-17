@@ -1,7 +1,7 @@
-package jp.ac.tachibana.food_survey.services.domain.session
+package jp.ac.tachibana.food_survey.services.session
 
 import jp.ac.tachibana.food_survey.domain.session.Session
-import jp.ac.tachibana.food_survey.persistence.domain.session.SessionRepository
+import jp.ac.tachibana.food_survey.persistence.session.SessionRepository
 
 class DefaultSessionService[F[_]](sessionRepository: SessionRepository[F]) extends SessionService[F]:
 

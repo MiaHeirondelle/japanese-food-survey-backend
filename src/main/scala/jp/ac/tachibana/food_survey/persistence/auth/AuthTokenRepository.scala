@@ -7,11 +7,12 @@ import jp.ac.tachibana.food_survey.util.crypto.Hash
 
 trait AuthTokenRepository[F[_]]:
 
-  def save(
+  // todo: create index
+  def insert(
     userId: User.Id,
     tokenHash: Hash,
     createdAt: Instant): F[Unit]
 
-  def load(tokenHash: Hash): F[Option[User.Id]]
+  def get(tokenHash: Hash): F[Option[User.Id]]
 
-  def remove(tokenHash: Hash): F[Unit]
+  def delete(tokenHash: Hash): F[Unit]

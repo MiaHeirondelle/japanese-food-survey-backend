@@ -1,7 +1,7 @@
-package jp.ac.tachibana.food_survey.services.domain.session
+package jp.ac.tachibana.food_survey.persistence.session
 
 import jp.ac.tachibana.food_survey.domain.session.Session
 
-trait SessionService[F[_]]:
+trait SessionRepository[F[_]]:
 
   def getActiveSession: F[Option[Session]]

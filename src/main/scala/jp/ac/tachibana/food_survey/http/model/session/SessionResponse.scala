@@ -1,4 +1,4 @@
-package jp.ac.tachibana.food_survey.http.model.domain.session
+package jp.ac.tachibana.food_survey.http.model.session
 
 import io.circe.{Encoder, JsonObject}
 

@@ -1,4 +1,4 @@
-package jp.ac.tachibana.food_survey.persistence.domain.session
+package jp.ac.tachibana.food_survey.persistence.session
 
 import cats.Applicative
 import cats.syntax.applicative.*

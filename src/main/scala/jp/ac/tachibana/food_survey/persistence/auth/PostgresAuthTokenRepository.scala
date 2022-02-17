@@ -14,7 +14,7 @@ import jp.ac.tachibana.food_survey.util.crypto.Hash
 
 class PostgresAuthTokenRepository[F[_]: Async](implicit tr: Transactor[F]) extends AuthTokenRepository[F]:
 
-  override def save(
+  override def insert(
     userId: User.Id,
     tokenHash: Hash,
     createdAt: Instant): F[Unit] =
@@ -22,14 +22,14 @@ class PostgresAuthTokenRepository[F[_]: Async](implicit tr: Transactor[F]) exten
       .transact(tr)
       .void
 
-  override def load(tokenHash: Hash): F[Option[User.Id]] =
+  override def get(tokenHash: Hash): F[Option[User.Id]] =
     sql"SELECT user_id FROM user_session WHERE token_hash = $tokenHash"
       .query[String]
       .option
       .transact(tr)
       .map(_.map(User.Id(_)))
 
-  override def remove(tokenHash: Hash): F[Unit] =
+  override def delete(tokenHash: Hash): F[Unit] =
     sql"DELETE FROM user_session WHERE token_hash = $tokenHash".update.run
       .transact(tr)
       .void

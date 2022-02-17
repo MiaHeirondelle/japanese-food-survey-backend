@@ -13,10 +13,4 @@ class PostgresCredentialsRepository[F[_]: Applicative] extends CredentialsReposi
     Applicative[F].unit
 
   override def getByLogin(login: UserCredentials.Login): F[Option[CredentialsRepository.StoredCredentials]] =
-    Some(
-      CredentialsRepository.StoredCredentials(
-        userId = User.Id("test"),
-        login = Secret(UserCredentials.Login("test")),
-        passwordHash = Hash("test"),
-        salt = Salt("test")
-      )).pure[F]
+    ???

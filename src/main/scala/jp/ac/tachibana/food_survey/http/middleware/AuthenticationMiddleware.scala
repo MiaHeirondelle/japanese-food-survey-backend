@@ -19,7 +19,8 @@ import jp.ac.tachibana.food_survey.http
 import jp.ac.tachibana.food_survey.http.middleware.AuthenticationMiddleware.{
   adminOnlyAuthDetailsTransformer,
   authenticationTokenCookieName,
-  defaultAuthDetailsTransformer
+  defaultAuthDetailsTransformer,
+  respondentOnlyAuthDetailsTransformer
 }
 import jp.ac.tachibana.food_survey.services.auth.{domain, AuthenticationService}
 import jp.ac.tachibana.food_survey.services.auth.domain.{AuthDetails, AuthToken}
@@ -35,10 +36,15 @@ class AuthenticationMiddleware[F[_]: Monad](
       authUser = authenticate(),
       onFailure = authFailureHandler
     )
-  // todo: transform auth details to admin user?
   val adminOnlyMiddleware: AuthMiddleware[F, AuthDetails.Admin] =
     AuthMiddleware(
       authUser = authenticate(adminOnlyAuthDetailsTransformer),
+      onFailure = authFailureHandler
+    )
+
+  val respondentOnlyMiddleware: AuthMiddleware[F, AuthDetails.Respondent] =
+    AuthMiddleware(
+      authUser = authenticate(respondentOnlyAuthDetailsTransformer),
       onFailure = authFailureHandler
     )
 
@@ -106,6 +112,16 @@ object AuthenticationMiddleware:
     authToken: AuthToken,
     user: User): Option[AuthDetails] =
     Some(AuthDetails.Generic(authToken, user))
+
+  private def respondentOnlyAuthDetailsTransformer(
+    authToken: AuthToken,
+    user: User): Option[AuthDetails.Respondent] =
+    user match {
+      case respondent: User.Respondent =>
+        Some(AuthDetails.Respondent(authToken, respondent))
+      case _: User.Admin =>
+        None
+    }
 
   private def adminOnlyAuthDetailsTransformer(
     authToken: AuthToken,

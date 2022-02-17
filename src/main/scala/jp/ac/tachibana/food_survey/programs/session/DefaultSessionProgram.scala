@@ -25,3 +25,13 @@ class DefaultSessionProgram[F[_]: Functor](sessionService: SessionService[F]) ex
         case SessionService.SessionCreationError.WrongSessionStatus =>
           SessionProgram.SessionCreationError.WrongSessionStatus
       })
+
+  override def join(respondent: User.Respondent): F[Either[SessionProgram.SessionJoinError, Unit]] =
+    sessionService
+      .join(respondent)
+      .map(_.left.map {
+        case SessionService.SessionJoinError.InvalidParticipant =>
+          SessionProgram.SessionJoinError.InvalidParticipant
+        case SessionService.SessionJoinError.WrongSessionStatus =>
+          SessionProgram.SessionJoinError.WrongSessionStatus
+      })

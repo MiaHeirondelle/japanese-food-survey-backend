@@ -12,7 +12,9 @@ trait SessionService[F[_]]:
     creator: User.Admin,
     respondents: NonEmptyList[User.Id]): F[Either[SessionService.SessionCreationError, Session.AwaitingUsers]]
 
-  def start: F[Either[SessionService.SessionStartError, Session.InProgress]]
+  def join(respondent: User.Respondent): F[Either[SessionService.SessionJoinError, Unit]]
+
+  def begin: F[Either[SessionService.SessionBeginError, Session.InProgress]]
 
   def update: F[Either[SessionService.SessionUpdateError, Session.InProgress]]
 
@@ -26,10 +28,16 @@ object SessionService:
     case object InvalidParticipants extends SessionCreationError
     case object WrongSessionStatus extends SessionCreationError
 
-  sealed trait SessionStartError
+  sealed trait SessionJoinError
 
-  object SessionStartError:
-    case object WrongSessionStatus extends SessionStartError
+  object SessionJoinError:
+    case object InvalidParticipant extends SessionJoinError
+    case object WrongSessionStatus extends SessionJoinError
+
+  sealed trait SessionBeginError
+
+  object SessionBeginError:
+    case object WrongSessionStatus extends SessionBeginError
 
   sealed trait SessionUpdateError
 

@@ -18,6 +18,13 @@ class CryptoHasher[F[_]: Sync](
   random: SecureRandom,
   keyFactory: SecretKeyFactory):
 
+  private val generateSalt: F[Salt] =
+    Sync[F].delay {
+      val bytes = Array.ofDim[Byte](16)
+      random.nextBytes(bytes)
+      Salt(bytes)
+    }
+
   def computeHash(string: String): F[(Hash, Salt)] =
     for {
       salt <- generateSalt
@@ -36,13 +43,6 @@ class CryptoHasher[F[_]: Sync](
     Sync[F].delay {
       val spec = new PBEKeySpec(string.toCharArray, salt.bytes, CryptoHasher.iterations, CryptoHasher.hashLength)
       Hash(keyFactory.generateSecret(spec).getEncoded)
-    }
-
-  private val generateSalt: F[Salt] =
-    Sync[F].delay {
-      val bytes = Array.ofDim[Byte](16)
-      random.nextBytes(bytes)
-      Salt(bytes)
     }
 
 object CryptoHasher:

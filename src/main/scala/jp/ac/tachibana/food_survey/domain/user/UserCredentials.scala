@@ -11,18 +11,7 @@ case class UserCredentials(
 object UserCredentials:
 
   opaque type Login = String
-
-  object Login:
-    def apply(value: String): Login = value
-
-    extension (login: Login) def value: String = login
-
   opaque type Password = String
-
-  object Password:
-    def apply(value: String): Password = value
-
-    extension (password: Password) def value: String = password
 
   def fromRawValues(
     login: String,
@@ -31,3 +20,13 @@ object UserCredentials:
       Secret(login),
       Secret(password)
     )
+
+  object Login:
+    def apply(value: String): Login = value
+
+    extension (login: Login) def value: String = login
+
+  object Password:
+    def apply(value: String): Password = value
+
+    extension (password: Password) def value: String = password

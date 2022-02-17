@@ -6,8 +6,7 @@ sealed abstract class User(val role: User.Role):
 
 object User:
 
-  enum Role:
-    case Respondent, Admin
+  opaque type Id = String
 
   def apply(
     id: User.Id,
@@ -30,10 +29,11 @@ object User:
     name: String)
       extends User(Role.Admin)
 
-  opaque type Id = String
-
   object Id:
 
     def apply(userId: String): User.Id = userId
 
     extension (userId: User.Id) def value: String = userId
+
+  enum Role:
+    case Respondent, Admin

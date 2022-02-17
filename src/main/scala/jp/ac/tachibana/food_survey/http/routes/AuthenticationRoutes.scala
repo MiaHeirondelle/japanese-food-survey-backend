@@ -23,6 +23,8 @@ class AuthenticationRoutes[F[_]: Async](
   authenticationService: AuthenticationService[F])
     extends HttpService.Routes[F] with Http4sDslBinCompat[F]:
 
+  override val routes: HttpRoutes[F] =
+    Router[F]("auth" -> baseRoutes)
   private val login = HttpRoutes.of[F] { case request @ POST -> Root / "login" =>
     request.as[LoginForm].flatMap { form =>
       authenticationService
@@ -39,7 +41,6 @@ class AuthenticationRoutes[F[_]: Async](
         }
     }
   }
-
   private val tokenRoutes = AuthedRoutes.of[AuthDetails, F] {
     case GET -> Root / "check" as details =>
       println(details)
@@ -48,9 +49,5 @@ class AuthenticationRoutes[F[_]: Async](
     case POST -> Root / "logout" as details =>
       authenticationService.logout(details.token) >> Ok().map(_.removeCookie(authenticationTokenCookieName))
   }
-
   private val baseRoutes =
     login <+> authenticationMiddleware.globalMiddleware(tokenRoutes)
-
-  override val routes: HttpRoutes[F] =
-    Router[F]("auth" -> baseRoutes)

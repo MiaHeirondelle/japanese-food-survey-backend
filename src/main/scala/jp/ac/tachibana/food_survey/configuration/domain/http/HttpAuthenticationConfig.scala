@@ -12,9 +12,6 @@ object HttpAuthenticationConfig:
   implicit val reader: ConfigReader[HttpAuthenticationConfig] =
     ConfigReader.derived
 
-  enum Mode:
-    case Secure, Insecure
-
   object Mode:
 
     implicit val reader: ConfigReader[HttpAuthenticationConfig.Mode] =
@@ -22,3 +19,6 @@ object HttpAuthenticationConfig:
         case true  => HttpAuthenticationConfig.Mode.Secure
         case false => HttpAuthenticationConfig.Mode.Insecure
       }
+
+  enum Mode:
+    case Secure, Insecure

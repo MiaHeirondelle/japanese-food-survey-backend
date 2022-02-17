@@ -1,10 +1,9 @@
 package jp.ac.tachibana.food_survey.http.model.user
 
 import io.circe.Encoder
-
-import jp.ac.tachibana.food_survey.domain.user.User
 import org.http4s.{ParseFailure, QueryParamDecoder}
 
+import jp.ac.tachibana.food_survey.domain.user.User
 import jp.ac.tachibana.food_survey.domain.user.User.Role
 import jp.ac.tachibana.food_survey.http.model.user
 

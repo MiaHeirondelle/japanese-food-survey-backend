@@ -1,12 +1,11 @@
 package jp.ac.tachibana.food_survey.services.user
 import cats.Monad
+import cats.syntax.applicative.*
+import cats.syntax.flatMap.*
+import cats.syntax.functor.*
 
 import jp.ac.tachibana.food_survey.domain.user.User
 import jp.ac.tachibana.food_survey.domain.user.User.Id
-import cats.syntax.applicative.*
-import cats.syntax.functor.*
-import cats.syntax.flatMap.*
-
 import jp.ac.tachibana.food_survey.persistence.user.UserRepository
 
 class DefaultUserService[F[_]: Monad](userRepository: UserRepository[F]) extends UserService[F]:

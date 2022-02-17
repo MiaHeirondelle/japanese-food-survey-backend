@@ -22,27 +22,6 @@ object SessionResponse:
       base.add("status", Encoder[SessionStatusFormat].apply(r.status))
     }
 
-  case object NotCreated extends SessionResponse(SessionStatusFormat.NotCreated)
-
-  case class AwaitingUsers(
-    joined_users: List[String],
-    awaiting_users: List[String],
-    admin: String)
-      extends SessionResponse(SessionStatusFormat.AwaitingUsers)
-      derives Encoder.AsObject
-
-  case class CanBegin(
-    joined_users: List[String],
-    admin: String)
-      extends SessionResponse(SessionStatusFormat.CanBegin)
-      derives Encoder.AsObject
-
-  case class InProgress(
-    joined_users: List[String],
-    admin: String)
-      extends SessionResponse(SessionStatusFormat.InProgress)
-      derives Encoder.AsObject
-
   def fromDomain(domainOpt: Option[Session]): SessionResponse =
     domainOpt.fold(SessionResponse.NotCreated) {
       case Session.AwaitingUsers(joinedUsers, waitingForUsers, admin) =>
@@ -64,3 +43,24 @@ object SessionResponse:
       case Session.Finished(joinedUsers, admin) =>
         SessionResponse.NotCreated
     }
+
+  case class AwaitingUsers(
+    joined_users: List[String],
+    awaiting_users: List[String],
+    admin: String)
+      extends SessionResponse(SessionStatusFormat.AwaitingUsers)
+      derives Encoder.AsObject
+
+  case class CanBegin(
+    joined_users: List[String],
+    admin: String)
+      extends SessionResponse(SessionStatusFormat.CanBegin)
+      derives Encoder.AsObject
+
+  case class InProgress(
+    joined_users: List[String],
+    admin: String)
+      extends SessionResponse(SessionStatusFormat.InProgress)
+      derives Encoder.AsObject
+
+  case object NotCreated extends SessionResponse(SessionStatusFormat.NotCreated)

@@ -5,14 +5,14 @@ import java.time.Instant
 import cats.Monad
 import cats.data.OptionT
 import cats.effect.{Clock, Sync}
+import cats.instances.option.*
+import cats.syntax.applicative.*
 import cats.syntax.either.*
 import cats.syntax.flatMap.*
+import cats.syntax.foldable.*
 import cats.syntax.functor.*
 import cats.syntax.monad.*
 import cats.syntax.traverse.*
-import cats.syntax.foldable.*
-import cats.instances.option.*
-import cats.syntax.applicative.*
 import cats.syntax.traverseFilter.*
 
 import jp.ac.tachibana.food_survey.domain.user.{User, UserCredentials}
@@ -65,7 +65,7 @@ class DefaultAuthenticationService[F[_]: Monad: Clock](
       userId <- OptionT(authTokenRepository.get(tokenHash))
       user <- OptionT(userRepository.get(userId))
     } yield user.asRight[AuthenticationService.AuthenticationError])
-    .getOrElse(Left(AuthenticationService.AuthenticationError.UserNotFound))
+      .getOrElse(Left(AuthenticationService.AuthenticationError.UserNotFound))
 
   override def logout(token: AuthToken): F[Unit] =
     for {

@@ -11,8 +11,9 @@ sealed trait CorsConfig
 
 object CorsConfig:
 
-  case object CorsDisabled extends CorsConfig
   case class CorsEnabled(allowedOrigins: Set[Origin]) extends CorsConfig
+
+  case object CorsDisabled extends CorsConfig
 
   object CorsEnabled:
     implicit private val originReader: ConfigReader[Origin] =

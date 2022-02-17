@@ -41,7 +41,6 @@ class AuthenticationRoutes[F[_]: Async](
   }
   private def tokenRoutes = AuthedRoutes.of[AuthDetails, F] {
     case GET -> Root / "check" as details =>
-      println(details)
       Ok(UserAuthenticatedResponse.fromDomain(details.user))
 
     case POST -> Root / "logout" as details =>

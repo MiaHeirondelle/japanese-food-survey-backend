@@ -2,6 +2,23 @@ package jp.ac.tachibana.food_survey.services.auth.domain
 
 import jp.ac.tachibana.food_survey.domain.user.User
 
-case class AuthDetails(
-  token: AuthToken,
-  user: User)
+sealed trait AuthDetails:
+  def token: AuthToken
+  def user: User
+
+object AuthDetails:
+
+  case class Generic(
+    token: AuthToken,
+    user: User)
+      extends AuthDetails
+
+  case class Respondent(
+    token: AuthToken,
+    user: User.Respondent)
+      extends AuthDetails
+
+  case class Admin(
+    token: AuthToken,
+    user: User.Admin)
+      extends AuthDetails

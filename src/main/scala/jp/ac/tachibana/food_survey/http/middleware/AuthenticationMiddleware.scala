@@ -16,8 +16,12 @@ import org.http4s.{AuthedRoutes, Request, Response, ResponseCookie, SameSite}
 import jp.ac.tachibana.food_survey.configuration.domain.http.HttpAuthenticationConfig
 import jp.ac.tachibana.food_survey.domain.user.User
 import jp.ac.tachibana.food_survey.http
-import jp.ac.tachibana.food_survey.http.middleware.AuthenticationMiddleware.{adminOnlyFilter, authenticationTokenCookieName}
-import jp.ac.tachibana.food_survey.services.auth.AuthenticationService
+import jp.ac.tachibana.food_survey.http.middleware.AuthenticationMiddleware.{
+  adminOnlyAuthDetailsTransformer,
+  authenticationTokenCookieName,
+  defaultAuthDetailsTransformer
+}
+import jp.ac.tachibana.food_survey.services.auth.{domain, AuthenticationService}
 import jp.ac.tachibana.food_survey.services.auth.domain.{AuthDetails, AuthToken}
 
 class AuthenticationMiddleware[F[_]: Monad](
@@ -32,9 +36,9 @@ class AuthenticationMiddleware[F[_]: Monad](
       onFailure = authFailureHandler
     )
   // todo: transform auth details to admin user?
-  val adminOnlyMiddleware: AuthMiddleware[F, AuthDetails] =
+  val adminOnlyMiddleware: AuthMiddleware[F, AuthDetails.Admin] =
     AuthMiddleware(
-      authUser = authenticate(adminOnlyFilter),
+      authUser = authenticate(adminOnlyAuthDetailsTransformer),
       onFailure = authFailureHandler
     )
 
@@ -60,8 +64,9 @@ class AuthenticationMiddleware[F[_]: Monad](
       )
     )
 
-  private def authenticate(userFilter: User => Boolean = _ => true)
-    : Kleisli[F, Request[F], Either[AuthenticationMiddleware.AuthenticationError, AuthDetails]] =
+  private def authenticate[A <: AuthDetails](
+    authDetailsTransformer: (AuthToken, User) => Option[A] = defaultAuthDetailsTransformer)
+    : Kleisli[F, Request[F], Either[AuthenticationMiddleware.AuthenticationError, A]] =
     Kleisli { request =>
       request.cookies
         .find(_.name === authenticationTokenCookieName)
@@ -73,11 +78,10 @@ class AuthenticationMiddleware[F[_]: Monad](
               case Left(_) =>
                 AuthenticationMiddleware.AuthenticationError.InvalidCredentials.asLeft
               case Right(user) =>
-                println(user)
-                if (userFilter(user))
-                  AuthDetails(authToken, user).asRight
-                else
-                  AuthenticationMiddleware.AuthenticationError.AccessDenied.asLeft
+                authDetailsTransformer(authToken, user) match {
+                  case Some(details) => details.asRight
+                  case None          => AuthenticationMiddleware.AuthenticationError.AccessDenied.asLeft
+                }
             }
         }
         .map(_.toRight(AuthenticationMiddleware.AuthenticationError.InvalidCredentials).flatten)
@@ -98,10 +102,19 @@ object AuthenticationMiddleware:
 
   val authenticationTokenCookieName = "JFSBSESSIONID"
 
-  private def adminOnlyFilter(user: User): Boolean =
+  private def defaultAuthDetailsTransformer(
+    authToken: AuthToken,
+    user: User): Option[AuthDetails] =
+    Some(AuthDetails.Generic(authToken, user))
+
+  private def adminOnlyAuthDetailsTransformer(
+    authToken: AuthToken,
+    user: User): Option[AuthDetails.Admin] =
     user match {
-      case _: User.Respondent => false
-      case _: User.Admin      => true
+      case admin: User.Admin =>
+        Some(AuthDetails.Admin(authToken, admin))
+      case _: User.Respondent =>
+        None
     }
 
   sealed trait AuthenticationError

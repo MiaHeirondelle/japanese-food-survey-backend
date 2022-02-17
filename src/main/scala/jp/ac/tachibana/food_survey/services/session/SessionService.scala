@@ -1,7 +1,42 @@
 package jp.ac.tachibana.food_survey.services.session
 
 import jp.ac.tachibana.food_survey.domain.session.Session
+import jp.ac.tachibana.food_survey.domain.user.User
+import cats.data.NonEmptyList
 
 trait SessionService[F[_]]:
 
   def getActiveSession: F[Option[Session]]
+
+  def create(
+    creator: User.Admin,
+    respondents: NonEmptyList[User.Id]): F[Either[SessionService.SessionCreationError, Session.AwaitingUsers]]
+
+  def start: F[Either[SessionService.SessionStartError, Session.InProgress]]
+
+  def update: F[Either[SessionService.SessionUpdateError, Session.InProgress]]
+
+  def finish: F[Either[SessionService.SessionFinishError, Session.Finished]]
+
+object SessionService:
+
+  sealed trait SessionCreationError
+
+  object SessionCreationError:
+    case object InvalidParticipants extends SessionCreationError
+    case object WrongSessionStatus extends SessionCreationError
+
+  sealed trait SessionStartError
+
+  object SessionStartError:
+    case object WrongSessionStatus extends SessionStartError
+
+  sealed trait SessionUpdateError
+
+  object SessionUpdateError:
+    case object WrongSessionStatus extends SessionUpdateError
+
+  sealed trait SessionFinishError
+
+  object SessionFinishError:
+    case object WrongSessionStatus extends SessionFinishError

@@ -13,6 +13,9 @@ trait SessionProgram[F[_]]:
     creator: User.Admin,
     respondents: NonEmptyList[User.Id]): F[Either[SessionProgram.SessionCreationError, Session.AwaitingUsers]]
 
+  def join(
+    respondent: User.Respondent): F[Either[SessionProgram.SessionJoinError, Unit]]
+
 object SessionProgram:
 
   sealed trait SessionCreationError
@@ -21,3 +24,10 @@ object SessionProgram:
 
     case object WrongSessionStatus extends SessionCreationError
     case object InvalidParticipants extends SessionCreationError
+
+  sealed trait SessionJoinError
+
+  object SessionJoinError:
+
+    case object WrongSessionStatus extends SessionJoinError
+    case object InvalidParticipant extends SessionJoinError

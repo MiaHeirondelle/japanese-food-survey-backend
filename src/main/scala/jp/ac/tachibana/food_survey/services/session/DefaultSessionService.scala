@@ -55,7 +55,10 @@ class DefaultSessionService[F[_]: Monad](
       }
     } yield result
 
-  override def start: F[Either[SessionService.SessionStartError, Session.InProgress]] = ???
+  override def join(respondent: User.Respondent): F[Either[SessionService.SessionJoinError, Unit]] =
+    ???
+
+  override def begin: F[Either[SessionService.SessionBeginError, Session.InProgress]] = ???
 
   override def update: F[Either[SessionService.SessionUpdateError, Session.InProgress]] = ???
 

@@ -23,10 +23,24 @@ class SessionRoutes[F[_]: Async](
     extends HttpService.Routes[F] with Http4sDslBinCompat[F]:
 
   private def baseRoutes: AuthedRoutes[AuthDetails, F] =
-    AuthedRoutes.of { case GET -> Root / "status" as _ =>
+    AuthedRoutes.of { case GET -> Root as _ =>
       for {
         sessionOpt <- sessionProgram.getActiveSession
         result <- Ok(SessionResponse.fromDomain(sessionOpt))
+      } yield result
+    }
+
+  private def respondentOnlyRoutes: AuthedRoutes[AuthDetails.Respondent, F] =
+    AuthedRoutes.of { case POST -> Root / "join" as respondent =>
+      for {
+        sessionCreated <- sessionProgram.join(respondent.user)
+        result <- sessionCreated match {
+          case Right(session) =>
+            Ok()
+
+          case Left(_) =>
+            Conflict()
+        }
       } yield result
     }
 
@@ -48,4 +62,4 @@ class SessionRoutes[F[_]: Async](
   override val routes: HttpRoutes[F] =
     Router[F](
       "session" -> (authenticationMiddleware.globalMiddleware(baseRoutes) <+> authenticationMiddleware.adminOnlyMiddleware(
-        adminOnlyRoutes)))
+        adminOnlyRoutes) <+> authenticationMiddleware.respondentOnlyMiddleware(respondentOnlyRoutes)))

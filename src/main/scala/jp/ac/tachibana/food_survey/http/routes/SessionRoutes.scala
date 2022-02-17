@@ -19,9 +19,7 @@ class SessionRoutes[F[_]: Async](
   sessionService: SessionService[F])
     extends HttpService.Routes[F] with Http4sDslBinCompat[F]:
 
-  override val routes: HttpRoutes[F] =
-    Router[F]("session" -> authenticationMiddleware.globalMiddleware(baseRoutes))
-  private val baseRoutes: AuthedRoutes[AuthDetails, F] =
+  private def baseRoutes: AuthedRoutes[AuthDetails, F] =
     AuthedRoutes.of { case GET -> Root / "status" as _ =>
       for {
         sessionOpt <- sessionService.getActiveSession
@@ -29,3 +27,6 @@ class SessionRoutes[F[_]: Async](
         result <- Ok(response)
       } yield result
     }
+
+  override val routes: HttpRoutes[F] =
+    Router[F]("session" -> authenticationMiddleware.globalMiddleware(baseRoutes))

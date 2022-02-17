@@ -11,4 +11,3 @@ CREATE TABLE "user" (
 INSERT INTO "user"
   (id, name, role)
   VALUES ('root', 'root', 'admin');
-  

@@ -1,17 +1,17 @@
 package jp.ac.tachibana.food_survey.services.session
 
-import jp.ac.tachibana.food_survey.domain.session.Session
-import jp.ac.tachibana.food_survey.persistence.session.SessionRepository
-import jp.ac.tachibana.food_survey.persistence.user.UserRepository
 import cats.Monad
-import cats.data.NonEmptyList
-import cats.syntax.flatMap.*
-import cats.syntax.functor.*
+import cats.data.{NonEmptyList, OptionT}
 import cats.syntax.applicative.*
 import cats.syntax.either.*
-import cats.data.OptionT
+import cats.syntax.eq.*
+import cats.syntax.flatMap.*
+import cats.syntax.functor.*
 
+import jp.ac.tachibana.food_survey.domain.session.Session
 import jp.ac.tachibana.food_survey.domain.user.User
+import jp.ac.tachibana.food_survey.persistence.session.SessionRepository
+import jp.ac.tachibana.food_survey.persistence.user.UserRepository
 
 class DefaultSessionService[F[_]: Monad](
   sessionRepository: SessionRepository[F],
@@ -56,7 +56,35 @@ class DefaultSessionService[F[_]: Monad](
     } yield result
 
   override def join(respondent: User.Respondent): F[Either[SessionService.SessionJoinError, Unit]] =
-    ???
+    // todo: check if user in awaiting session
+    OptionT(sessionRepository.getActiveSession)
+      .semiflatMap {
+        case s: Session.AwaitingUsers =>
+          NonEmptyList.fromList(s.waitingForUsers.filterNot(_.id === respondent.id)) match {
+            case Some(waitingForUsers) =>
+              sessionRepository
+                .updateActiveSession(
+                  s.copy(
+                    joinedUsers = respondent :: s.joinedUsers,
+                    waitingForUsers = waitingForUsers
+                  ))
+                .map(_.asRight[SessionService.SessionJoinError])
+
+            case None =>
+              sessionRepository
+                .updateActiveSession(
+                  Session.CanBegin(
+                    joinedUsers = NonEmptyList.of(respondent, s.joinedUsers*),
+                    admin = s.admin
+                  )
+                )
+                .map(_.asRight[SessionService.SessionJoinError])
+          }
+
+        case _ =>
+          SessionService.SessionJoinError.WrongSessionStatus.asLeft[Unit].pure[F]
+      }
+      .getOrElse(SessionService.SessionJoinError.WrongSessionStatus.asLeft[Unit])
 
   override def begin: F[Either[SessionService.SessionBeginError, Session.InProgress]] = ???
 

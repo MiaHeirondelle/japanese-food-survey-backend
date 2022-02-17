@@ -15,3 +15,5 @@ trait CryptoInstances:
 
   implicit def secretGet[A: Put]: Put[Secret[A]] =
     Put[A].tcontramap(_.value)
+
+object CryptoInstances extends CryptoInstances

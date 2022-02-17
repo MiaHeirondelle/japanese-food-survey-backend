@@ -54,7 +54,7 @@ class DefaultAuthenticationService[F[_]: Monad: Clock](
                 authTokenHash <- tokenHasher.hash(authToken)
                 createdAt <- Clock[F].realTime
                 _ <- authTokenRepository.insert(user.id, authTokenHash, Instant.ofEpochMilli(createdAt.toMillis))
-              } yield AuthDetails(authToken, user)),
+              } yield AuthDetails.Generic(authToken, user)),
           ifFalse = OptionT.none
         )
     } yield result).fold(AuthenticationService.LoginError.InvalidCredentials.asLeft)(_.asRight)

@@ -10,3 +10,9 @@ class PostgresSessionRepository[F[_]: Applicative] extends SessionRepository[F]:
 
   override def getActiveSession: F[Option[Session]] =
     None.pure[F]
+
+  override def createNewSession(session: Session.AwaitingUsers): F[Unit] =
+    Applicative[F].unit
+
+  override def updateActiveSession(session: Session): F[Unit] =
+    Applicative[F].unit

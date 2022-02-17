@@ -1,19 +1,38 @@
 package jp.ac.tachibana.food_survey.persistence.user
-import cats.Applicative
+
+import cats.effect.Async
 import cats.syntax.applicative.*
+import cats.syntax.functor.*
+import doobie.*
+import doobie.implicits.*
+import doobie.postgres.implicits.*
 
 import jp.ac.tachibana.food_survey.domain.user.User
-import jp.ac.tachibana.food_survey.domain.user.User.Id
-import jp.ac.tachibana.food_survey.domain.user.UserCredentials.Login
+import jp.ac.tachibana.food_survey.persistence.util.ParameterInstances.*
 import jp.ac.tachibana.food_survey.services.auth.domain.HashedUserCredentials
 
-class PostgresUserRepository[F[_]: Applicative] extends UserRepository[F]:
+class PostgresUserRepository[F[_]: Async](implicit tr: Transactor[F]) extends UserRepository[F]:
 
   override def insert(user: User): F[Unit] =
-    Applicative[F].unit
+    import user.*
+    sql"""INSERT INTO "user" (id, name, role) VALUES ($id, $name, $role)""".update.run
+      .transact(tr)
+      .void
 
-  override def get(userId: Id): F[Option[User]] =
-    Some(User.Admin(userId, "test_name")).pure[F]
+  override def get(userId: User.Id): F[Option[User]] =
+    sql"""SELECT id, name, role FROM "user"
+         |WHERE id = $userId""".stripMargin
+      .query[User]
+      .option
+      .transact(tr)
 
   override def getByCredentials(credentials: HashedUserCredentials): F[Option[User]] =
-    Some(User.Admin(User.Id("test"), "test_name")).pure[F]
+    import credentials.*
+    sql"""SELECT "user".id, "user".name, "user".role FROM "user_credentials"
+         |JOIN "user" ON user_credentials.user_id = "user".id
+         |WHERE "user_credentials".login = $login
+         |AND "user_credentials".password_hash = $passwordHash
+         |AND "user_credentials".password_salt = $passwordSalt""".stripMargin
+      .query[User]
+      .option
+      .transact(tr)

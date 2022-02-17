@@ -7,11 +7,10 @@ import cats.syntax.semigroupk.*
 import cats.{Applicative, Monad, Monoid, MonoidK, SemigroupK}
 import javax.net.ssl.SSLContext
 import org.http4s.blaze.server.*
-import org.http4s.implicits.*
-import org.http4s.{Http, HttpApp, HttpRoutes}
-import org.http4s.server.middleware.{CORS, CORSConfig}
 import org.http4s.headers.Origin
-import org.http4s.Method
+import org.http4s.implicits.*
+import org.http4s.server.middleware.{CORS, CORSConfig}
+import org.http4s.{Http, HttpApp, HttpRoutes, Method}
 
 import jp.ac.tachibana.food_survey.configuration.domain.http.{CorsConfig, HttpConfig}
 import jp.ac.tachibana.food_survey.http

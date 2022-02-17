@@ -19,10 +19,10 @@ object AuthenticationService:
 
   sealed trait LoginError
 
+  sealed trait AuthenticationError
+
   object LoginError:
     case object InvalidCredentials extends AuthenticationService.LoginError
-
-  sealed trait AuthenticationError
 
   object AuthenticationError:
     case object UserNotFound extends AuthenticationService.AuthenticationError

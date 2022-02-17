@@ -4,8 +4,12 @@ opaque type Salt = Array[Byte]
 
 object Salt:
 
-  def apply(string: String): Salt = string.getBytes
+  def apply(bytes: Array[Byte]): Salt =
+    bytes
 
-  def apply(bytes: Array[Byte]): Salt = bytes
+  extension (salt: Salt)
+    def bytes: Array[Byte] =
+      salt
 
-  extension (salt: Salt) def bytes: Array[Byte] = salt
+    def hexString: String =
+      salt.map("%02X".format(_)).mkString

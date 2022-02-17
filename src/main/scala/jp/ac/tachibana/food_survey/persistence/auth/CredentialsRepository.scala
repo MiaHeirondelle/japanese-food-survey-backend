@@ -17,7 +17,7 @@ object CredentialsRepository:
     userId: User.Id,
     login: Secret[UserCredentials.Login],
     passwordHash: Hash,
-    salt: Salt)
+    passwordSalt: Salt)
 
   object StoredCredentials:
 
@@ -28,9 +28,9 @@ object CredentialsRepository:
         userId = userId,
         login = hashedCredentials.login,
         passwordHash = hashedCredentials.passwordHash,
-        salt = hashedCredentials.salt
+        passwordSalt = hashedCredentials.passwordSalt
       )
 
     extension (storedCredentials: StoredCredentials)
       def toHashedCredentials: HashedUserCredentials =
-        HashedUserCredentials(storedCredentials.login, storedCredentials.passwordHash, storedCredentials.salt)
+        HashedUserCredentials(storedCredentials.login, storedCredentials.passwordHash, storedCredentials.passwordSalt)

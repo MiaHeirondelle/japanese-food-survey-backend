@@ -11,4 +11,4 @@ import jp.ac.tachibana.food_survey.util.crypto.{CryptoHasher, Hash, Salt, Secret
 case class HashedUserCredentials(
   login: Secret[UserCredentials.Login],
   passwordHash: Hash,
-  salt: Salt)
+  passwordSalt: Salt)

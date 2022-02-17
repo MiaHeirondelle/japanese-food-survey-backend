@@ -9,6 +9,17 @@ object User:
   enum Role:
     case Respondent, Admin
 
+  def apply(
+    id: User.Id,
+    name: String,
+    role: User.Role): User =
+    role match {
+      case User.Role.Respondent =>
+        User.Respondent(id, name)
+      case User.Role.Admin =>
+        User.Admin(id, name)
+    }
+
   case class Respondent(
     id: User.Id,
     name: String)

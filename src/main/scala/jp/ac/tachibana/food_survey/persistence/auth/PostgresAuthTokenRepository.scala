@@ -18,18 +18,17 @@ class PostgresAuthTokenRepository[F[_]: Async](implicit tr: Transactor[F]) exten
     userId: User.Id,
     tokenHash: Hash,
     createdAt: Instant): F[Unit] =
-    sql"INSERT INTO user_session (user_id, token_hash, created_at) VALUES ($userId, $tokenHash, $createdAt)".update.run
+    sql"""INSERT INTO "user_session" (user_id, token_hash, created_at) VALUES ($userId, $tokenHash, $createdAt)""".update.run
       .transact(tr)
       .void
 
   override def get(tokenHash: Hash): F[Option[User.Id]] =
-    sql"SELECT user_id FROM user_session WHERE token_hash = $tokenHash"
-      .query[String]
+    sql"""SELECT user_id FROM "user_session" WHERE token_hash = $tokenHash"""
+      .query[User.Id]
       .option
       .transact(tr)
-      .map(_.map(User.Id(_)))
 
   override def delete(tokenHash: Hash): F[Unit] =
-    sql"DELETE FROM user_session WHERE token_hash = $tokenHash".update.run
+    sql"""DELETE FROM "user_session" WHERE token_hash = $tokenHash""".update.run
       .transact(tr)
       .void

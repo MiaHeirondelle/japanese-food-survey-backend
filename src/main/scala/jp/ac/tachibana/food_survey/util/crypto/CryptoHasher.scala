@@ -59,7 +59,7 @@ object CryptoHasher:
           HashedUserCredentials(
             login = userCredentials.login,
             passwordHash = passwordHash,
-            salt = salt
+            passwordSalt = salt
           )
         }
 

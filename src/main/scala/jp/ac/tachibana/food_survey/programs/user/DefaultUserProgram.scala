@@ -27,13 +27,7 @@ class DefaultUserProgram[F[_]: Monad](
   private def generateUser(
     name: String,
     role: User.Role): F[User] =
-    generateUserId.map(userId =>
-      role match {
-        case User.Role.Respondent =>
-          User.Respondent(userId, name)
-        case User.Role.Admin =>
-          User.Admin(userId, name)
-      })
+    generateUserId.map(User(_, name, role))
 
   // todo: proper id generation
   private def generateUserId: F[User.Id] =

@@ -44,8 +44,8 @@ class DefaultAuthenticationService[F[_]: Monad: Clock](
     (for {
       matchingCredentials <- OptionT(credentialsRepository.getByLogin(credentials.login.value))
       result <- OptionT
-        .liftF(
-          cryptoHasher.verifyHash(credentials.password.value.value, matchingCredentials.passwordHash, matchingCredentials.salt))
+        .liftF(cryptoHasher
+          .verifyHash(credentials.password.value.value, matchingCredentials.passwordHash, matchingCredentials.passwordSalt))
         .ifM(
           ifTrue = OptionT(userRepository.getByCredentials(matchingCredentials.toHashedCredentials))
             .semiflatMap(user =>
@@ -60,12 +60,12 @@ class DefaultAuthenticationService[F[_]: Monad: Clock](
     } yield result).fold(AuthenticationService.LoginError.InvalidCredentials.asLeft)(_.asRight)
 
   override def authenticate(token: AuthToken): F[Either[AuthenticationService.AuthenticationError, User]] =
-    for {
-      // todo: fetch user by user id
-      tokenHash <- tokenHasher.hash(token)
-      userId <- authTokenRepository.get(tokenHash)
-      user = userId.map(User.Admin(_, "test_name"))
-    } yield user.toRight(AuthenticationService.AuthenticationError.UserNotFound)
+    (for {
+      tokenHash <- OptionT.liftF(tokenHasher.hash(token))
+      userId <- OptionT(authTokenRepository.get(tokenHash))
+      user <- OptionT(userRepository.get(userId))
+    } yield user.asRight[AuthenticationService.AuthenticationError])
+    .getOrElse(Left(AuthenticationService.AuthenticationError.UserNotFound))
 
   override def logout(token: AuthToken): F[Unit] =
     for {

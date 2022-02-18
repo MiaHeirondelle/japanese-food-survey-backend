@@ -14,11 +14,14 @@ trait SessionService[F[_]]:
 
   def join(respondent: User.Respondent): F[Either[SessionService.SessionJoinError, Unit]]
 
-  def begin: F[Either[SessionService.SessionBeginError, Session.InProgress]]
+  def begin(admin: User.Admin): F[Either[SessionService.SessionBeginError, Session.InProgress]]
 
   def update: F[Either[SessionService.SessionUpdateError, Session.InProgress]]
 
   def finish: F[Either[SessionService.SessionFinishError, Session.Finished]]
+
+  // todo: update signature
+  def stop: F[Unit]
 
 object SessionService:
 

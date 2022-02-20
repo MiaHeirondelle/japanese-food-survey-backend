@@ -1,6 +1,6 @@
 package jp.ac.tachibana.food_survey
 
-import cats.effect.{IO, IOApp, Ref}
+import cats.effect.{IO, IOApp}
 import doobie.Transactor
 
 import jp.ac.tachibana.food_survey.configuration.domain.ApplicationConfig
@@ -24,12 +24,11 @@ object Main extends IOApp.Simple:
     for {
       appConfig <- ApplicationConfig.load[IO]
       _ <- IO.delay(println(appConfig))
-      sessionRef <- Ref.of[IO, Option[Session]](None)
       result <- DatabaseTransactor.start[IO](appConfig.persistence).use { (tr: Transactor[IO]) =>
         implicit val transactor: Transactor[IO] = tr
         val authTokenRepository = new PostgresAuthTokenRepository[IO]()
         val credentialsRepository = new PostgresCredentialsRepository[IO]()
-        val sessionRepository = new PostgresSessionRepository[IO](sessionRef)
+        val sessionRepository = new PostgresSessionRepository[IO]()
         val userRepository = new PostgresUserRepository[IO]()
 
         for {

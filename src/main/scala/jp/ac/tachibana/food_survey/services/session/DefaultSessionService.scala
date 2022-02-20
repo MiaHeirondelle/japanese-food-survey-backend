@@ -35,12 +35,17 @@ class DefaultSessionService[F[_]: Monad](
               .value
             result <- respondentsOpt match {
               case Some(respondents) =>
-                val session = Session.AwaitingUsers(
-                  joinedUsers = Nil,
-                  waitingForUsers = respondents,
-                  admin = creator
-                )
-                sessionRepository.createNewSession(session).as(session.asRight[SessionService.SessionCreationError])
+                for {
+                  sessionNumberOpt <- sessionRepository.getLatestSessionNumber
+                  sessionNumber = sessionNumberOpt.fold(Session.Number.zero)(_.increment)
+                  session = Session.AwaitingUsers(
+                    number = sessionNumber,
+                    joinedUsers = Nil,
+                    waitingForUsers = respondents,
+                    admin = creator
+                  )
+                  _ <- sessionRepository.createNewSession(session)
+                } yield session.asRight[SessionService.SessionCreationError]
               case None =>
                 SessionService.SessionCreationError.InvalidParticipants
                   .asLeft[Session.AwaitingUsers]
@@ -74,6 +79,7 @@ class DefaultSessionService[F[_]: Monad](
               sessionRepository
                 .updateActiveSession(
                   Session.CanBegin(
+                    number = s.number,
                     joinedUsers = NonEmptyList.of(respondent, s.joinedUsers*),
                     admin = s.admin
                   )
@@ -92,6 +98,7 @@ class DefaultSessionService[F[_]: Monad](
       .semiflatMap {
         case s: Session.CanBegin =>
           val session = Session.InProgress(
+            number = s.number,
             joinedUsers = s.joinedUsers,
             admin = s.admin
           )

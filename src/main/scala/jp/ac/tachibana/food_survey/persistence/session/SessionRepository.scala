@@ -4,6 +4,8 @@ import jp.ac.tachibana.food_survey.domain.session.Session
 
 trait SessionRepository[F[_]]:
 
+  def getLatestSessionNumber: F[Option[Session.Number]]
+
   def getActiveSession: F[Option[Session]]
 
   // todo: session already in progress error

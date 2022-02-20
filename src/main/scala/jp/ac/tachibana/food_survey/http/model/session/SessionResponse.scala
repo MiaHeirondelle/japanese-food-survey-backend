@@ -24,27 +24,31 @@ object SessionResponse:
 
   def fromDomain(domainOpt: Option[Session]): SessionResponse =
     domainOpt.fold(SessionResponse.NotCreated) {
-      case Session.AwaitingUsers(joinedUsers, waitingForUsers, admin) =>
+      case Session.AwaitingUsers(number, joinedUsers, waitingForUsers, admin) =>
         SessionResponse.AwaitingUsers(
+          number = number.value,
           joined_users = joinedUsers.map(_.id.value),
           awaiting_users = waitingForUsers.toList.map(_.id.value),
           admin = admin.id.value
         )
-      case Session.CanBegin(joinedUsers, admin) =>
+      case Session.CanBegin(number, joinedUsers, admin) =>
         SessionResponse.CanBegin(
+          number = number.value,
           joined_users = joinedUsers.toList.map(_.id.value),
           admin = admin.id.value
         )
-      case Session.InProgress(joinedUsers, admin) =>
+      case Session.InProgress(number, joinedUsers, admin) =>
         SessionResponse.InProgress(
+          number = number.value,
           joined_users = joinedUsers.toList.map(_.id.value),
           admin = admin.id.value
         )
-      case Session.Finished(joinedUsers, admin) =>
+      case _: Session.Finished =>
         SessionResponse.NotCreated
     }
 
   case class AwaitingUsers(
+    number: Int,
     joined_users: List[String],
     awaiting_users: List[String],
     admin: String)
@@ -52,12 +56,14 @@ object SessionResponse:
       derives Encoder.AsObject
 
   case class CanBegin(
+    number: Int,
     joined_users: List[String],
     admin: String)
       extends SessionResponse(SessionStatusFormat.CanBegin)
       derives Encoder.AsObject
 
   case class InProgress(
+    number: Int,
     joined_users: List[String],
     admin: String)
       extends SessionResponse(SessionStatusFormat.InProgress)

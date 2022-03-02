@@ -68,7 +68,7 @@ class DefaultSessionService[F[_]: Monad](
           NonEmptyList.fromList(s.waitingForUsers.filterNot(_.id === respondent.id)) match {
             case Some(waitingForUsers) =>
               sessionRepository
-                .updateActiveSession(
+                .updateSession(
                   s.copy(
                     joinedUsers = respondent :: s.joinedUsers,
                     waitingForUsers = waitingForUsers
@@ -77,7 +77,7 @@ class DefaultSessionService[F[_]: Monad](
 
             case None =>
               sessionRepository
-                .updateActiveSession(
+                .updateSession(
                   Session.CanBegin(
                     number = s.number,
                     joinedUsers = NonEmptyList.of(respondent, s.joinedUsers*),
@@ -103,7 +103,7 @@ class DefaultSessionService[F[_]: Monad](
             admin = s.admin
           )
           sessionRepository
-            .updateActiveSession(
+            .updateSession(
               session
             )
             .as(session.asRight[SessionService.SessionBeginError])

@@ -1,9 +1,9 @@
 package jp.ac.tachibana.food_survey.persistence.util
 
-import io.circe.{Decoder, Encoder}
 import doobie.implicits.*
 import doobie.postgres.implicits.*
 import doobie.{Get, Meta, Put, Read}
+import io.circe.{Decoder, Encoder}
 
 import jp.ac.tachibana.food_survey.domain.user.{User, UserCredentials}
 
@@ -36,5 +36,13 @@ trait UserInstances:
   implicit val userRead: Read[User] =
     Read[(User.Id, String, User.Role)]
       .map { case (userId, name, role) => User(userId, name, role) }
+
+  implicit val adminRead: Read[User.Admin] =
+    Read[(User.Id, String)]
+      .map { case (userId, name) => User.Admin(userId, name) }
+
+  implicit val respondentRead: Read[User.Respondent] =
+    Read[(User.Id, String)]
+      .map { case (userId, name) => User.Respondent(userId, name) }
 
 object UserInstances extends UserInstances

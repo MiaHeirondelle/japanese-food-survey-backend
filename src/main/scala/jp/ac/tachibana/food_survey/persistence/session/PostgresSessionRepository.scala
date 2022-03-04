@@ -1,9 +1,11 @@
 package jp.ac.tachibana.food_survey.persistence.session
 
+import cats.data.NonEmptyList
 import cats.effect.{Async, Ref, Sync}
 import cats.syntax.applicative.*
 import cats.syntax.flatMap.*
 import cats.syntax.functor.*
+import cats.syntax.traverse.*
 import doobie.*
 import doobie.implicits.*
 import doobie.postgres.circe.jsonb.implicits.*
@@ -13,7 +15,6 @@ import jp.ac.tachibana.food_survey.domain.session.Session
 import jp.ac.tachibana.food_survey.domain.user.User
 import jp.ac.tachibana.food_survey.persistence.util.ParameterInstances.*
 import jp.ac.tachibana.food_survey.persistence.util.SessionInstances.SessionPostgresFormat
-import jp.ac.tachibana.food_survey.persistence.util.UserInstances.*
 import jp.ac.tachibana.food_survey.services.auth.domain.HashedUserCredentials
 
 class PostgresSessionRepository[F[_]: Async](implicit tr: Transactor[F]) extends SessionRepository[F]:
@@ -25,39 +26,57 @@ class PostgresSessionRepository[F[_]: Async](implicit tr: Transactor[F]) extends
       .option
       .transact(tr)
 
-  // todo: select participants
   override def getActiveSession: F[Option[Session]] =
+    val query = selectActiveSessionQuery
+      .flatMap(_.traverse(activeSession =>
+        for {
+          respondents <- selectSessionRespondentsQuery(activeSession.number)
+          admin <- selectSessionAdminQuery(activeSession.admin)
+        } yield activeSession match {
+          case s: SessionPostgresFormat.AwaitingUsers =>
+            Session.AwaitingUsers(
+              number = s.number,
+              joinedUsers = Nil,
+              waitingForUsers = respondents,
+              admin = admin
+            )
+          case s: SessionPostgresFormat.CanBegin =>
+            Session.CanBegin(
+              number = s.number,
+              joinedUsers = respondents,
+              admin = admin
+            )
+          case s: SessionPostgresFormat.InProgress =>
+            Session.InProgress(
+              number = s.number,
+              joinedUsers = respondents,
+              admin = admin
+            )
+          case s: SessionPostgresFormat.Finished =>
+            Session.Finished(
+              number = s.number,
+              joinedUsers = respondents,
+              admin = admin
+            )
+        }))
+    query.transact(tr)
+
+  private val selectActiveSessionQuery: ConnectionIO[Option[SessionPostgresFormat]] =
     sql"""SELECT session_number, admin_id, status, state FROM "survey_session" WHERE status != 'finished'"""
       .query[SessionPostgresFormat]
-      .map {
-        case s: SessionPostgresFormat.AwaitingUsers =>
-          Session.AwaitingUsers(
-            number = s.number,
-            joinedUsers = s.joinedUsers.map(id => User.Respondent(id, "test" + id.value)),
-            waitingForUsers = s.waitingForUsers.map(id => User.Respondent(id, "test" + id.value)),
-            admin = User.Admin(s.admin, "test" + s.admin.value)
-          )
-        case s: SessionPostgresFormat.CanBegin =>
-          Session.CanBegin(
-            number = s.number,
-            joinedUsers = s.joinedUsers.map(id => User.Respondent(id, "test" + id.value)),
-            admin = User.Admin(s.admin, "test" + s.admin.value)
-          )
-        case s: SessionPostgresFormat.InProgress =>
-          Session.InProgress(
-            number = s.number,
-            joinedUsers = s.joinedUsers.map(id => User.Respondent(id, "test" + id.value)),
-            admin = User.Admin(s.admin, "test" + s.admin.value)
-          )
-        case s: SessionPostgresFormat.Finished =>
-          Session.Finished(
-            number = s.number,
-            joinedUsers = s.joinedUsers.map(id => User.Respondent(id, "test" + id.value)),
-            admin = User.Admin(s.admin, "test" + s.admin.value)
-          )
-      }
       .option
-      .transact(tr)
+
+  private def selectSessionRespondentsQuery(sessionNumber: Session.Number): ConnectionIO[NonEmptyList[User.Respondent]] =
+    sql"""SELECT id, name FROM "user"
+         |JOIN "survey_session_participant" AS ssp ON ssp.user_id = "user".id AND ssp.session_number = $sessionNumber""".stripMargin
+      .query[User.Respondent]
+      .nel
+
+  private def selectSessionAdminQuery(userId: User.Id): ConnectionIO[User.Admin] =
+    sql"""SELECT id, name FROM "user"
+         |WHERE id = $userId AND role = 'admin'""".stripMargin
+      .query[User.Admin]
+      .unique
 
   override def createNewSession(session: Session.AwaitingUsers): F[Unit] =
     val query = for {

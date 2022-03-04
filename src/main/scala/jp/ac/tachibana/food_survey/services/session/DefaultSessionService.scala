@@ -18,6 +18,8 @@ class DefaultSessionService[F[_]: Monad](
   userRepository: UserRepository[F])
     extends SessionService[F]:
 
+  // todo: current session state (cached)
+
   override def getActiveSession: F[Option[Session]] =
     sessionRepository.getActiveSession
 
@@ -65,6 +67,7 @@ class DefaultSessionService[F[_]: Monad](
     OptionT(sessionRepository.getActiveSession)
       .semiflatMap {
         case s: Session.AwaitingUsers =>
+          // todo: not persist
           NonEmptyList.fromList(s.waitingForUsers.filterNot(_.id === respondent.id)) match {
             case Some(waitingForUsers) =>
               sessionRepository
@@ -76,6 +79,7 @@ class DefaultSessionService[F[_]: Monad](
                 .map(_.asRight[SessionService.SessionJoinError])
 
             case None =>
+              // todo: not persist
               sessionRepository
                 .updateSession(
                   Session.CanBegin(

@@ -2,6 +2,7 @@ package jp.ac.tachibana.food_survey.persistence.session
 
 import cats.effect.{Async, Ref, Sync}
 import cats.syntax.applicative.*
+import cats.syntax.flatMap.*
 import cats.syntax.functor.*
 import doobie.*
 import doobie.implicits.*
@@ -58,13 +59,21 @@ class PostgresSessionRepository[F[_]: Async](implicit tr: Transactor[F]) extends
       .option
       .transact(tr)
 
-  // todo: insert participants
-  override def createNewSession(session: Session.AwaitingUsers): F[Unit] = {
-    val encoded = SessionPostgresFormat.fromDomain(session)
-    sql"""INSERT INTO "survey_session" (session_number, admin_id, status, state) VALUES ($encoded)""".update.run
-      .transact(tr)
-      .void
-  }
+  override def createNewSession(session: Session.AwaitingUsers): F[Unit] =
+    val query = for {
+      _ <- insertNewSessionQuery(session)
+      _ <- insertParticipantsQuery(session)
+    } yield ()
+    query.transact(tr)
+
+  private def insertNewSessionQuery(session: Session.AwaitingUsers) =
+    val data = SessionPostgresFormat.fromDomain(session)
+    sql"""INSERT INTO "survey_session" (session_number, admin_id, status, state) VALUES ($data)""".update.run
+
+  private def insertParticipantsQuery(session: Session.AwaitingUsers) =
+    val data = session.waitingForUsers.map(u => (session.number, u.id))
+    Update[(Session.Number, User.Id)]("""INSERT INTO "survey_session_participant" (session_number, user_id) VALUES (?, ?)""")
+      .updateMany(data)
 
   override def updateSession(session: Session): F[Unit] =
     val encoded = SessionPostgresFormat.fromDomain(session)

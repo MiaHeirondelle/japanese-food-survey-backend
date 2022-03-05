@@ -40,18 +40,6 @@ class PostgresSessionRepository[F[_]: Async](implicit tr: Transactor[F]) extends
               waitingForUsers = respondents,
               admin = admin
             )
-          case s: SessionPostgresFormat.CanBegin =>
-            Session.CanBegin(
-              number = s.number,
-              joinedUsers = respondents,
-              admin = admin
-            )
-          case s: SessionPostgresFormat.InProgress =>
-            Session.InProgress(
-              number = s.number,
-              joinedUsers = respondents,
-              admin = admin
-            )
           case s: SessionPostgresFormat.Finished =>
             Session.Finished(
               number = s.number,
@@ -99,7 +87,7 @@ class PostgresSessionRepository[F[_]: Async](implicit tr: Transactor[F]) extends
     val encodedState = encoded.asStateJson
     sql"""UPDATE "survey_session" SET
           |admin_id = ${encoded.admin},
-          |status = ${encoded.status},
+          |status = ${encoded.encodedStatus},
           |state = $encodedState
           |WHERE session_number = ${encoded.number}
         """.stripMargin.update.run

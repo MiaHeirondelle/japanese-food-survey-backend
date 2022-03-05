@@ -1,4 +1,4 @@
-CREATE TYPE session_status AS ENUM ('awaiting_users', 'can_begin', 'in_progress', 'finished');
+CREATE TYPE session_status AS ENUM ('awaiting_users', 'finished');
 
 CREATE TABLE "survey_session"(
   session_number INT PRIMARY KEY,

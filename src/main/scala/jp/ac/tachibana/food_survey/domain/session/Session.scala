@@ -1,6 +1,8 @@
 package jp.ac.tachibana.food_survey.domain.session
 
 import cats.data.NonEmptyList
+import cats.instances.int.*
+import cats.{Eq, Order}
 
 import jp.ac.tachibana.food_survey.domain.user.User
 
@@ -15,6 +17,9 @@ object Session:
   object Number:
 
     val zero: Number = 0
+
+    implicit val order: Order[Number] =
+      catsKernelStdOrderForInt
 
     extension (number: Number)
       def increment: Number = number + 1
@@ -52,3 +57,8 @@ object Session:
 
   enum Status:
     case AwaitingUsers, CanBegin, InProgress, Finished
+
+  object Status:
+
+    implicit val eq: Eq[Session.Status] =
+      Eq.fromUniversalEquals

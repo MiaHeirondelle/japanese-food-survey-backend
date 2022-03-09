@@ -18,6 +18,8 @@ class DefaultSessionService[F[_]: Monad](
   userRepository: UserRepository[F])
     extends SessionService[F]:
 
+  // todo: current session state (cached)
+
   override def getActiveSession: F[Option[Session]] =
     sessionRepository.getActiveSession
 
@@ -35,12 +37,17 @@ class DefaultSessionService[F[_]: Monad](
               .value
             result <- respondentsOpt match {
               case Some(respondents) =>
-                val session = Session.AwaitingUsers(
-                  joinedUsers = Nil,
-                  waitingForUsers = respondents,
-                  admin = creator
-                )
-                sessionRepository.createNewSession(session).as(session.asRight[SessionService.SessionCreationError])
+                for {
+                  sessionNumberOpt <- sessionRepository.getLatestSessionNumber
+                  sessionNumber = sessionNumberOpt.fold(Session.Number.zero)(_.increment)
+                  session = Session.AwaitingUsers(
+                    number = sessionNumber,
+                    joinedUsers = Nil,
+                    waitingForUsers = respondents,
+                    admin = creator
+                  )
+                  _ <- sessionRepository.createNewSession(session)
+                } yield session.asRight[SessionService.SessionCreationError]
               case None =>
                 SessionService.SessionCreationError.InvalidParticipants
                   .asLeft[Session.AwaitingUsers]
@@ -60,10 +67,11 @@ class DefaultSessionService[F[_]: Monad](
     OptionT(sessionRepository.getActiveSession)
       .semiflatMap {
         case s: Session.AwaitingUsers =>
+          // todo: not persist
           NonEmptyList.fromList(s.waitingForUsers.filterNot(_.id === respondent.id)) match {
             case Some(waitingForUsers) =>
               sessionRepository
-                .updateActiveSession(
+                .updateSession(
                   s.copy(
                     joinedUsers = respondent :: s.joinedUsers,
                     waitingForUsers = waitingForUsers
@@ -71,9 +79,11 @@ class DefaultSessionService[F[_]: Monad](
                 .map(_.asRight[SessionService.SessionJoinError])
 
             case None =>
+              // todo: not persist
               sessionRepository
-                .updateActiveSession(
+                .updateSession(
                   Session.CanBegin(
+                    number = s.number,
                     joinedUsers = NonEmptyList.of(respondent, s.joinedUsers*),
                     admin = s.admin
                   )
@@ -92,11 +102,12 @@ class DefaultSessionService[F[_]: Monad](
       .semiflatMap {
         case s: Session.CanBegin =>
           val session = Session.InProgress(
+            number = s.number,
             joinedUsers = s.joinedUsers,
             admin = s.admin
           )
           sessionRepository
-            .updateActiveSession(
+            .updateSession(
               session
             )
             .as(session.asRight[SessionService.SessionBeginError])

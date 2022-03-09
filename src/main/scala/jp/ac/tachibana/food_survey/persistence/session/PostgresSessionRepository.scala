@@ -1,21 +1,98 @@
 package jp.ac.tachibana.food_survey.persistence.session
 
-import cats.effect.{Ref, Sync}
+import cats.data.NonEmptyList
+import cats.effect.{Async, Ref, Sync}
+import cats.syntax.applicative.*
+import cats.syntax.flatMap.*
+import cats.syntax.functor.*
+import cats.syntax.traverse.*
+import doobie.*
+import doobie.implicits.*
+import doobie.postgres.circe.jsonb.implicits.*
+import doobie.postgres.implicits.*
 
 import jp.ac.tachibana.food_survey.domain.session.Session
 import jp.ac.tachibana.food_survey.domain.user.User
-import cats.syntax.functor.*
+import jp.ac.tachibana.food_survey.persistence.util.ParameterInstances.*
+import jp.ac.tachibana.food_survey.persistence.util.SessionInstances.SessionPostgresFormat
+import jp.ac.tachibana.food_survey.services.auth.domain.HashedUserCredentials
 
-class PostgresSessionRepository[F[_]: Sync](ref: Ref[F, Option[Session]]) extends SessionRepository[F]:
+class PostgresSessionRepository[F[_]: Async](implicit tr: Transactor[F]) extends SessionRepository[F]:
+
+  // todo: trigger on status - only one active session
+  override def getLatestSessionNumber: F[Option[Session.Number]] =
+    sql"""SELECT session_number FROM survey_session ORDER BY session_number DESC LIMIT 1"""
+      .query[Session.Number]
+      .option
+      .transact(tr)
 
   override def getActiveSession: F[Option[Session]] =
-    ref.get
+    val query = selectActiveSessionQuery
+      .flatMap(_.traverse(activeSession =>
+        for {
+          respondents <- selectSessionRespondentsQuery(activeSession.number)
+          admin <- selectSessionAdminQuery(activeSession.admin)
+        } yield activeSession match {
+          case s: SessionPostgresFormat.AwaitingUsers =>
+            Session.AwaitingUsers(
+              number = s.number,
+              joinedUsers = Nil,
+              waitingForUsers = respondents,
+              admin = admin
+            )
+          case s: SessionPostgresFormat.Finished =>
+            Session.Finished(
+              number = s.number,
+              joinedUsers = respondents,
+              admin = admin
+            )
+        }))
+    query.transact(tr)
+
+  private val selectActiveSessionQuery: ConnectionIO[Option[SessionPostgresFormat]] =
+    sql"""SELECT session_number, admin_id, status, state FROM "survey_session" WHERE status != 'finished'"""
+      .query[SessionPostgresFormat]
+      .option
+
+  private def selectSessionRespondentsQuery(sessionNumber: Session.Number): ConnectionIO[NonEmptyList[User.Respondent]] =
+    sql"""SELECT id, name FROM "user"
+         |JOIN "survey_session_participant" AS ssp ON ssp.user_id = "user".id AND ssp.session_number = $sessionNumber""".stripMargin
+      .query[User.Respondent]
+      .nel
+
+  private def selectSessionAdminQuery(userId: User.Id): ConnectionIO[User.Admin] =
+    sql"""SELECT id, name FROM "user"
+         |WHERE id = $userId AND role = 'admin'""".stripMargin
+      .query[User.Admin]
+      .unique
 
   override def createNewSession(session: Session.AwaitingUsers): F[Unit] =
-    ref.getAndSet(Some(session)).void
+    val query = for {
+      _ <- insertNewSessionQuery(session)
+      _ <- insertParticipantsQuery(session)
+    } yield ()
+    query.transact(tr)
 
-  override def updateActiveSession(session: Session): F[Unit] =
-    ref.getAndSet(Some(session)).void
+  private def insertNewSessionQuery(session: Session.AwaitingUsers) =
+    val data = SessionPostgresFormat.fromDomain(session)
+    sql"""INSERT INTO "survey_session" (session_number, admin_id, status, state) VALUES ($data)""".update.run
+
+  private def insertParticipantsQuery(session: Session.AwaitingUsers) =
+    val data = session.waitingForUsers.map(u => (session.number, u.id))
+    Update[(Session.Number, User.Id)]("""INSERT INTO "survey_session_participant" (session_number, user_id) VALUES (?, ?)""")
+      .updateMany(data)
+
+  override def updateSession(session: Session): F[Unit] =
+    val encoded = SessionPostgresFormat.fromDomain(session)
+    val encodedState = encoded.asStateJson
+    sql"""UPDATE "survey_session" SET
+          |admin_id = ${encoded.admin},
+          |status = ${encoded.encodedStatus},
+          |state = $encodedState
+          |WHERE session_number = ${encoded.number}
+        """.stripMargin.update.run
+      .transact(tr)
+      .void
 
   override def reset: F[Unit] =
-    ref.set(None)
+    sql"""DELETE FROM "survey_session"""".update.run.transact(tr).void

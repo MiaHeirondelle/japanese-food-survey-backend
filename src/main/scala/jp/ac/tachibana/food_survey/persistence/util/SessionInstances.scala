@@ -1,91 +1,147 @@
 package jp.ac.tachibana.food_survey.persistence.util
 
 import cats.data.NonEmptyList
+import doobie.*
+import doobie.implicits.*
+import doobie.postgres.circe.jsonb.implicits.*
 import doobie.postgres.implicits.*
-import doobie.{Get, Meta, Put, Read}
+import io.circe.syntax.*
 import io.circe.{Decoder, Encoder, Json}
 
 import jp.ac.tachibana.food_survey.domain.session.Session
 import jp.ac.tachibana.food_survey.domain.session.Session.Status
 import jp.ac.tachibana.food_survey.domain.user.User
-import doobie.postgres.circe.jsonb.implicits.*
-import doobie.implicits.*
-import UserInstances.*
-
-import jp.ac.tachibana.food_survey.domain.session.Session.Status.{AwaitingUsers, CanBegin, Finished, InProgress}
-import jp.ac.tachibana.food_survey.persistence.util.SessionInstances.SessionPostgresFormat
+import jp.ac.tachibana.food_survey.persistence.util.SessionInstances.{SessionPostgresFormat, SessionStatePostgresFormat}
+import jp.ac.tachibana.food_survey.persistence.util.UserInstances.*
 
 trait SessionInstances:
 
-  implicit val sessionStatusMeta: Meta[Session.Status] =
-    pgEnumStringOpt[Session.Status](
+  implicit val sessionNumberMeta: Meta[Session.Number] =
+    Meta[Int].timap(Session.Number(_))(_.value)
+
+  implicit val sessionPostgresFormatStatusMeta: Meta[SessionPostgresFormat.Status] =
+    pgEnumStringOpt[SessionPostgresFormat.Status](
       "session_status",
       {
-        case "awaiting_users" => Some(Session.Status.AwaitingUsers)
-        case "can_begin"      => Some(Session.Status.CanBegin)
-        case "in_progress"    => Some(Session.Status.InProgress)
-        case "finished"       => Some(Session.Status.Finished)
+        case "awaiting_users" => Some(SessionPostgresFormat.Status.AwaitingUsers)
+        case "finished"       => Some(SessionPostgresFormat.Status.Finished)
         case _                => None
       },
       {
-        case Session.Status.AwaitingUsers => "awaiting_users"
-        case Session.Status.CanBegin      => "can_begin"
-        case Session.Status.InProgress    => "in_progress"
-        case Session.Status.Finished      => "finished"
+        case SessionPostgresFormat.Status.AwaitingUsers => "awaiting_users"
+        case SessionPostgresFormat.Status.Finished      => "finished"
       }
     )
 
-// todo: session read, session write
+  implicit val sessionPostgresFormatRead: Read[SessionPostgresFormat] =
+    // todo: fix toOption.get
+    Read[(Session.Number, User.Id, SessionPostgresFormat.Status, Json)]
+      .map { case (number, adminId, status, state) =>
+        status match {
+          case SessionPostgresFormat.Status.AwaitingUsers =>
+            val decodedState = state.as[SessionStatePostgresFormat.AwaitingUsers].toOption.get
+            SessionPostgresFormat.AwaitingUsers(
+              number = number,
+              admin = adminId
+            )
+          case SessionPostgresFormat.Status.Finished =>
+            val decodedState = state.as[SessionStatePostgresFormat.Finished].toOption.get
+            SessionPostgresFormat.Finished(
+              number = number,
+              admin = adminId
+            )
+        }
+      }
+
+  implicit val sessionPostgresFormatWrite: Write[SessionPostgresFormat] =
+    Write[(Session.Number, User.Id, SessionPostgresFormat.Status, Json)]
+      .contramap { s =>
+        val encodedState = SessionStatePostgresFormat.encodeJson(s)
+        val encodedStatus = SessionPostgresFormat.Status.fromDomain(s.status)
+        (s.number, s.admin, encodedStatus, encodedState)
+      }
 
 object SessionInstances extends SessionInstances:
 
-  sealed abstract class SessionPostgresFormat(val status: Session.Status)
+  sealed abstract class SessionPostgresFormat(
+    val status: Session.Status,
+    val encodedStatus: SessionPostgresFormat.Status) {
+    def number: Session.Number
+    def admin: User.Id
+  }
 
   object SessionPostgresFormat:
 
+    enum Status:
+      case AwaitingUsers, Finished
+
+    object Status:
+      def fromDomain(status: Session.Status): SessionPostgresFormat.Status =
+        status match {
+          case Session.Status.AwaitingUsers =>
+            SessionPostgresFormat.Status.AwaitingUsers
+          case Session.Status.CanBegin =>
+            SessionPostgresFormat.Status.AwaitingUsers
+          case Session.Status.InProgress =>
+            SessionPostgresFormat.Status.AwaitingUsers
+          case Session.Status.Finished =>
+            SessionPostgresFormat.Status.Finished
+        }
+
+    extension (format: SessionPostgresFormat)
+      def asStateJson: Json =
+        SessionStatePostgresFormat.encodeJson(format)
+
+    def fromDomain(session: Session): SessionPostgresFormat =
+      session match {
+        case s: Session.AwaitingUsers =>
+          SessionPostgresFormat.AwaitingUsers(
+            number = s.number,
+            admin = s.admin.id
+          )
+        case s: Session.CanBegin =>
+          SessionPostgresFormat.AwaitingUsers(
+            number = s.number,
+            admin = s.admin.id
+          )
+        case s: Session.InProgress =>
+          SessionPostgresFormat.AwaitingUsers(
+            number = s.number,
+            admin = s.admin.id
+          )
+        case s: Session.Finished =>
+          SessionPostgresFormat.Finished(
+            number = s.number,
+            admin = s.admin.id
+          )
+      }
+
     case class AwaitingUsers(
-      waitingForUsers: NonEmptyList[User.Id],
+      number: Session.Number,
       admin: User.Id)
-        extends SessionPostgresFormat(Session.Status.AwaitingUsers)
-
-    case class CanBegin(
-      joinedUsers: NonEmptyList[User.Id],
-      admin: User.Id)
-        extends SessionPostgresFormat(Session.Status.CanBegin)
-
-    case class InProgress(
-      joinedUsers: NonEmptyList[User.Respondent],
-      admin: User.Admin
-      // todo: remaining questions (nel)
-      // todo: replies
-    ) extends SessionPostgresFormat(Session.Status.InProgress)
+        extends SessionPostgresFormat(Session.Status.AwaitingUsers, SessionPostgresFormat.Status.AwaitingUsers)
 
     case class Finished(
-      joinedUsers: NonEmptyList[User.Id],
+      number: Session.Number,
       admin: User.Id
       // todo: replies (nel)
-    ) extends SessionPostgresFormat(Session.Status.Finished)
+    ) extends SessionPostgresFormat(Session.Status.Finished, SessionPostgresFormat.Status.Finished)
 
-  sealed trait SessionStatePostgresFormat
+  sealed private[persistence] trait SessionStatePostgresFormat
 
-  object SessionStatePostgresFormat:
-    case class AwaitingUsers(
-      joinedUsers: List[User.Id],
-      waitingForUsers: NonEmptyList[User.Id])
-        extends SessionStatePostgresFormat
-        derives Encoder.AsObject, Decoder
+  private[persistence] object SessionStatePostgresFormat:
 
-    case class CanBegin(joinedUsers: NonEmptyList[User.Id]) extends SessionStatePostgresFormat derives Encoder.AsObject, Decoder
+    def encodeJson(format: SessionPostgresFormat): Json =
+      format match {
+        case s: SessionPostgresFormat.AwaitingUsers =>
+          SessionStatePostgresFormat.AwaitingUsers().asJson
+        case s: SessionPostgresFormat.Finished =>
+          SessionStatePostgresFormat.Finished().asJson
+      }
 
-    case class InProgress(
-      joinedUsers: NonEmptyList[User.Id]
-      // todo: remaining questions (nel)
-      // todo: replies
-    ) extends SessionStatePostgresFormat
-        derives Encoder.AsObject, Decoder
+    case class AwaitingUsers() extends SessionStatePostgresFormat derives Encoder.AsObject, Decoder
 
     case class Finished(
-      joinedUsers: NonEmptyList[User.Id]
       // todo: replies (nel)
     ) extends SessionStatePostgresFormat
         derives Encoder.AsObject, Decoder

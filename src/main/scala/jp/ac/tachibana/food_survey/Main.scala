@@ -1,6 +1,6 @@
 package jp.ac.tachibana.food_survey
 
-import cats.effect.{IO, IOApp, Ref}
+import cats.effect.{IO, IOApp}
 import doobie.Transactor
 
 import jp.ac.tachibana.food_survey.configuration.domain.ApplicationConfig
@@ -10,7 +10,7 @@ import jp.ac.tachibana.food_survey.http.middleware.AuthenticationMiddleware
 import jp.ac.tachibana.food_survey.http.routes.{AuthenticationRoutes, SessionRoutes, UserRoutes}
 import jp.ac.tachibana.food_survey.persistence.DatabaseTransactor
 import jp.ac.tachibana.food_survey.persistence.auth.{PostgresAuthTokenRepository, PostgresCredentialsRepository}
-import jp.ac.tachibana.food_survey.persistence.session.PostgresSessionRepository
+import jp.ac.tachibana.food_survey.persistence.session.{CachingPostgresSessionRepository, PostgresSessionRepository}
 import jp.ac.tachibana.food_survey.persistence.user.PostgresUserRepository
 import jp.ac.tachibana.food_survey.programs.session.DefaultSessionProgram
 import jp.ac.tachibana.food_survey.programs.user.DefaultUserProgram
@@ -24,15 +24,15 @@ object Main extends IOApp.Simple:
     for {
       appConfig <- ApplicationConfig.load[IO]
       _ <- IO.delay(println(appConfig))
-      sessionRef <- Ref.of[IO, Option[Session]](None)
       result <- DatabaseTransactor.start[IO](appConfig.persistence).use { (tr: Transactor[IO]) =>
         implicit val transactor: Transactor[IO] = tr
         val authTokenRepository = new PostgresAuthTokenRepository[IO]()
         val credentialsRepository = new PostgresCredentialsRepository[IO]()
-        val sessionRepository = new PostgresSessionRepository[IO](sessionRef)
         val userRepository = new PostgresUserRepository[IO]()
 
         for {
+          sessionRepository <- CachingPostgresSessionRepository.make[IO]
+
           authenticationService <- DefaultAuthenticationService
             .create[IO](authTokenRepository, credentialsRepository, userRepository)
           sessionService = new DefaultSessionService[IO](sessionRepository, userRepository)

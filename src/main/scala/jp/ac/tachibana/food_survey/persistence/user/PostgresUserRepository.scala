@@ -36,3 +36,10 @@ class PostgresUserRepository[F[_]: Async](implicit tr: Transactor[F]) extends Us
       .query[User]
       .option
       .transact(tr)
+
+  override def getAllByRole(role: User.Role): F[List[User]] =
+    sql"""SELECT id, name, $role FROM "user"
+         |WHERE role = $role""".stripMargin
+      .query[User]
+      .to[List]
+      .transact(tr)

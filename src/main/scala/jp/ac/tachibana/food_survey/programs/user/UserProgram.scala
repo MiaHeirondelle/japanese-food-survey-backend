@@ -8,3 +8,5 @@ trait UserProgram[F[_]]:
     name: String,
     role: User.Role,
     credentials: UserCredentials): F[User.Id]
+
+  def getAllByRole(role: User.Role): F[List[User]]

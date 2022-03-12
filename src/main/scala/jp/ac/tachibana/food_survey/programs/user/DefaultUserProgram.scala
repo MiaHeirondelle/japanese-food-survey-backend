@@ -24,6 +24,9 @@ class DefaultUserProgram[F[_]: Monad](
       result <- authenticationService.saveCredentials(user.id, credentials)
     } yield user.id
 
+  override def getAllByRole(role: Role): F[List[User]] =
+    userService.getAllByRole(role)
+
   private def generateUser(
     name: String,
     role: User.Role): F[User] =

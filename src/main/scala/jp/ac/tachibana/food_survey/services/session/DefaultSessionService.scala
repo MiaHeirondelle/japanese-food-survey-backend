@@ -27,6 +27,7 @@ class DefaultSessionService[F[_]: Monad](
     creator: User.Admin,
     respondents: NonEmptyList[User.Id]): F[Either[SessionService.SessionCreationError, Session.AwaitingUsers]] =
     for {
+      // todo: get session structure and persist session snapshot
       sessionOpt <- getActiveSession
       result <- sessionOpt match {
         case None =>

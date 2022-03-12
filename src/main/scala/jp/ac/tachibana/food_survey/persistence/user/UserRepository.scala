@@ -10,4 +10,6 @@ trait UserRepository[F[_]] {
   def get(userId: User.Id): F[Option[User]]
 
   def getByCredentials(credentials: HashedUserCredentials): F[Option[User]]
+
+  def getAllByRole(role: User.Role): F[List[User]]
 }

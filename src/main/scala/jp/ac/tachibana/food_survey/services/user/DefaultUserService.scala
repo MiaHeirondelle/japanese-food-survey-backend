@@ -17,6 +17,9 @@ class DefaultUserService[F[_]: Sync](userRepository: UserRepository[F]) extends 
     role: User.Role): F[User] =
     generateUser(name, role).flatTap(userRepository.insert)
 
+  override def getAllByRole(role: User.Role): F[List[User]] =
+    userRepository.getAllByRole(role)
+
   private def generateUser(
     name: String,
     role: User.Role): F[User] =

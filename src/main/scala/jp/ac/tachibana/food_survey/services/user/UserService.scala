@@ -7,3 +7,5 @@ trait UserService[F[_]]:
   def create(
     name: String,
     role: User.Role): F[User]
+
+  def getAllByRole(role: User.Role): F[List[User]]

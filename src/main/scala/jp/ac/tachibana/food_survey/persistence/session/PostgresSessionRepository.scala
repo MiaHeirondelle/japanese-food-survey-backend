@@ -95,4 +95,8 @@ class PostgresSessionRepository[F[_]: Async](implicit tr: Transactor[F]) extends
       .void
 
   override def reset: F[Unit] =
-    sql"""DELETE FROM "survey_session"""".update.run.transact(tr).void
+    val query = for {
+      _ <- sql"""DELETE FROM "survey_session_participant"""".update.run
+      _ <- sql"""DELETE FROM "survey_session"""".update.run
+    } yield ()
+    query.transact(tr)

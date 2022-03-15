@@ -26,7 +26,7 @@ class DefaultSessionProgram[F[_]: Functor](sessionService: SessionService[F]) ex
           SessionProgram.SessionCreationError.WrongSessionStatus
       })
 
-  override def join(respondent: User.Respondent): F[Either[SessionProgram.SessionJoinError, Unit]] =
+  override def join(respondent: User.Respondent): F[Either[SessionProgram.SessionJoinError, Session.NotBegan]] =
     sessionService
       .join(respondent)
       .map(_.left.map {
@@ -36,12 +36,12 @@ class DefaultSessionProgram[F[_]: Functor](sessionService: SessionService[F]) ex
           SessionProgram.SessionJoinError.WrongSessionStatus
       })
 
-  override def begin(admin: User.Admin): F[Either[SessionProgram.SessionBeginError, Unit]] =
+  override def begin(admin: User.Admin): F[Either[SessionProgram.SessionBeginError, Session.InProgress]] =
     sessionService
       .begin(admin)
       .map(_.left.map { case SessionService.SessionBeginError.WrongSessionStatus =>
         SessionProgram.SessionBeginError.WrongSessionStatus
-      }.void)
+      })
 
   override def stop: F[Unit] =
     sessionService.stop

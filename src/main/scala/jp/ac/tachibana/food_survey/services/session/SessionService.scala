@@ -1,8 +1,9 @@
 package jp.ac.tachibana.food_survey.services.session
 
+import cats.data.NonEmptyList
+
 import jp.ac.tachibana.food_survey.domain.session.Session
 import jp.ac.tachibana.food_survey.domain.user.User
-import cats.data.NonEmptyList
 
 trait SessionService[F[_]]:
 
@@ -12,7 +13,7 @@ trait SessionService[F[_]]:
     creator: User.Admin,
     respondents: NonEmptyList[User.Id]): F[Either[SessionService.SessionCreationError, Session.AwaitingUsers]]
 
-  def join(respondent: User.Respondent): F[Either[SessionService.SessionJoinError, Unit]]
+  def join(respondent: User.Respondent): F[Either[SessionService.SessionJoinError, Session.NotBegan]]
 
   def begin(admin: User.Admin): F[Either[SessionService.SessionBeginError, Session.InProgress]]
 

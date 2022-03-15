@@ -1,7 +1,7 @@
 package jp.ac.tachibana.food_survey.programs.session
 
 import cats.Monad
-import cats.data.{EitherT, NonEmptyList}
+import cats.data.{EitherT, NonEmptyList, OptionT}
 import cats.effect.std.Queue
 import cats.effect.{GenConcurrent, Ref}
 import cats.syntax.flatMap.*
@@ -61,7 +61,12 @@ class WebSocketSessionListenerProgram[F[_]](
   // todo: on close unregister?
   private def transformInput(user: User)(input: ListenerInput[F]): fs2.Stream[F, Unit] =
     input.evalMap { case SessionListenerProgram.InputMessage.BeginSession(number) =>
-      Monad[F].pure(())
+      val beginF = for {
+        session <- OptionT(statesMapRef.get.map(_.get(number)))
+        result <- OptionT(program.begin(session.admin).map(_.toOption))
+        _ <- OptionT.liftF(broadcastMessage(SessionListenerProgram.OutputMessage.SessionBegan(result))(result))
+      } yield result
+      beginF.value.void
     }
 
   private def unregisterListeners: F[Unit] =

@@ -27,7 +27,7 @@ class SessionRoutes[F[_]: Async](
     AuthedRoutes.of { case GET -> Root as _ =>
       for {
         sessionOpt <- sessionProgram.getActiveSession
-        result <- Ok(SessionFormat.fromDomain(sessionOpt))
+        result <- Ok(SessionFormat.fromDomainOpt(sessionOpt))
       } yield result
     }
 
@@ -53,7 +53,7 @@ class SessionRoutes[F[_]: Async](
           sessionCreated <- sessionProgram.create(admin.user, createSessionRequest.respondents.map(User.Id(_)))
           result <- sessionCreated match {
             case Right(session) =>
-              Ok(SessionFormat.fromDomain(Some(session)))
+              Ok(SessionFormat.fromDomainOpt(Some(session)))
 
             case Left(_) =>
               Conflict()

@@ -1,6 +1,7 @@
 package jp.ac.tachibana.food_survey.http.routes
 
 import cats.effect.Async
+import cats.syntax.applicative.*
 import cats.syntax.flatMap.*
 import cats.syntax.functor.*
 import cats.syntax.semigroupk.*
@@ -8,25 +9,28 @@ import org.http4s.circe.CirceEntityDecoder.*
 import org.http4s.circe.CirceEntityEncoder.*
 import org.http4s.dsl.Http4sDslBinCompat
 import org.http4s.server.Router
+import org.http4s.server.websocket.WebSocketBuilder2
 import org.http4s.websocket.WebSocketFrame
-import org.http4s.{AuthedRoutes, HttpRoutes}
+import org.http4s.{AuthedRoutes, HttpRoutes, Response}
 
 import jp.ac.tachibana.food_survey.domain.user.User
 import jp.ac.tachibana.food_survey.http.HttpService
 import jp.ac.tachibana.food_survey.http.middleware.AuthenticationMiddleware
+import jp.ac.tachibana.food_survey.http.model.session.websocket.{InputSessionMessageFormat, OutputSessionMessageFormat}
 import jp.ac.tachibana.food_survey.http.model.session.{CreateSessionRequest, SessionFormat}
 import jp.ac.tachibana.food_survey.programs.session.{SessionListenerProgram, SessionProgram}
 import jp.ac.tachibana.food_survey.services.auth.domain.AuthDetails
 
 class SessionRoutes[F[_]: Async](
   authenticationMiddleware: AuthenticationMiddleware[F],
-  sessionProgram: SessionProgram[F])
+  sessionListenerProgram: SessionListenerProgram[F]
+)(webSocketBuilder: WebSocketBuilder2[F])
     extends HttpService.Routes[F] with Http4sDslBinCompat[F]:
 
   private def baseRoutes: AuthedRoutes[AuthDetails, F] =
     AuthedRoutes.of { case GET -> Root as _ =>
       for {
-        sessionOpt <- sessionProgram.getActiveSession
+        sessionOpt <- sessionListenerProgram.getActiveSession
         result <- Ok(SessionFormat.fromDomainOpt(sessionOpt))
       } yield result
     }
@@ -34,10 +38,10 @@ class SessionRoutes[F[_]: Async](
   private def respondentOnlyRoutes: AuthedRoutes[AuthDetails.Respondent, F] =
     AuthedRoutes.of { case POST -> Root / "join" as respondent =>
       for {
-        sessionJoined <- sessionProgram.join(respondent.user)
+        sessionJoined <- sessionListenerProgram.join(socketListenerResponseBuilder)(respondent.user)
         result <- sessionJoined match {
-          case Right(session) =>
-            Ok()
+          case Right(response) =>
+            response.pure[F]
 
           case Left(_) =>
             Conflict()
@@ -50,28 +54,20 @@ class SessionRoutes[F[_]: Async](
       case request @ POST -> Root / "create" as admin =>
         for {
           createSessionRequest <- request.req.as[CreateSessionRequest]
-          sessionCreated <- sessionProgram.create(admin.user, createSessionRequest.respondents.map(User.Id(_)))
-          result <- sessionCreated match {
-            case Right(session) =>
-              Ok(SessionFormat.fromDomainOpt(Some(session)))
+          result <- sessionListenerProgram.create(socketListenerResponseBuilder)(
+            admin.user,
+            createSessionRequest.respondents.map(User.Id(_)))
+          result <- result match {
+            case Right(response) =>
+              response.pure[F]
 
             case Left(_) =>
               Conflict()
           }
         } yield result
-      case POST -> Root / "begin" as admin =>
-        for {
-          sessionBegan <- sessionProgram.begin(admin.user)
-          result <- sessionBegan match {
-            case Right(_) =>
-              Ok()
 
-            case Left(_) =>
-              Conflict()
-          }
-        } yield result
       case POST -> Root / "stop" as admin =>
-        sessionProgram.stop >> Ok()
+        sessionListenerProgram.stop >> Ok()
     }
 
   override val routes: HttpRoutes[F] =
@@ -79,10 +75,11 @@ class SessionRoutes[F[_]: Async](
       "session" -> (authenticationMiddleware.globalMiddleware(baseRoutes) <+> authenticationMiddleware.adminOnlyMiddleware(
         adminOnlyRoutes) <+> authenticationMiddleware.respondentOnlyMiddleware(respondentOnlyRoutes)))
 
-object SessionRoutes:
-
-  def convertInputSessionSocketMessage(frame: WebSocketFrame): Option[SessionListenerProgram.InputMessage] =
-    frame match {
-      case WebSocketFrame.Text(text, _) => ???
-
-    }
+  private def socketListenerResponseBuilder(
+    listenerInputTransformer: SessionListenerProgram.ListenerInputTransformer[F],
+    listenerOutput: SessionListenerProgram.ListenerOutput[F]): F[Response[F]] =
+    webSocketBuilder.build(
+      send = listenerOutput.map(OutputSessionMessageFormat.toWebSocketFrame),
+      receive =
+        _.map(InputSessionMessageFormat.fromWebSocketFrame).collect { case Some(i) => i }.through(listenerInputTransformer)
+    )

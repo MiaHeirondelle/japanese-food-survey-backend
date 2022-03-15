@@ -44,8 +44,8 @@ object SessionListenerProgram:
   sealed trait OutputMessage
 
   object OutputMessage:
-    case class RespondentJoined(
-      user: User.Respondent,
+    case class UserJoined(
+      user: User,
       session: Session.NotBegan)
         extends SessionListenerProgram.OutputMessage
 

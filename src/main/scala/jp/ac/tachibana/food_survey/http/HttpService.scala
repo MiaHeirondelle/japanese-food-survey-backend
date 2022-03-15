@@ -10,6 +10,7 @@ import org.http4s.blaze.server.*
 import org.http4s.headers.Origin
 import org.http4s.implicits.*
 import org.http4s.server.middleware.{CORS, CORSConfig}
+import org.http4s.server.websocket.WebSocketBuilder2
 import org.http4s.{Http, HttpApp, HttpRoutes, Method}
 
 import jp.ac.tachibana.food_survey.configuration.domain.http.{CorsConfig, HttpConfig}
@@ -18,21 +19,21 @@ import jp.ac.tachibana.food_survey.http.routes.AuthenticationRoutes
 
 class HttpService[F[_]: Async](
   config: HttpConfig,
-  authenticationRoutes: AuthenticationRoutes[F],
-  routes: HttpService.Routes[F]*):
+  authenticationRoutesBuilder: WebSocketBuilder2[F] => AuthenticationRoutes[F],
+  routeBuilders: (WebSocketBuilder2[F] => HttpService.Routes[F])*):
 
-  private val httpApp: HttpApp[F] =
+  private def httpApp(wsb: WebSocketBuilder2[F]): HttpApp[F] =
     withCORS(
       // It's important that routes that do not require authentication go first.
       // Otherwise, the service will short-circuit with a 409 error.
-      (authenticationRoutes.routes <+> routes
-        .map(_.routes)
+      (authenticationRoutesBuilder(wsb).routes <+> routeBuilders
+        .map(b => b(wsb).routes)
         .fold(HttpRoutes.empty[F])(_ <+> _)).orNotFound)
 
   def start(ec: ExecutionContext): F[Unit] =
     BlazeServerBuilder[F]
       .withExecutionContext(ec)
-      .withHttpApp(httpApp)
+      .withHttpWebSocketApp(httpApp)
       .bindHttp(port = config.port, host = config.host)
       .serve
       .compile
@@ -55,11 +56,3 @@ object HttpService:
   trait Routes[F[_]]:
 
     def routes: HttpRoutes[F]
-
-  object Routes:
-
-    def lift[F[_]: Monad](httpRoutes: HttpRoutes[F]*): HttpService.Routes[F] =
-      new HttpService.Routes {
-        override val routes: HttpRoutes[F] =
-          httpRoutes.fold(HttpRoutes.empty[F])(_ <+> _)
-      }

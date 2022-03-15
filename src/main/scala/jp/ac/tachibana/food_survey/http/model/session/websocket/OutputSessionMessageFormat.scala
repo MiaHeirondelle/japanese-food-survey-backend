@@ -1,6 +1,5 @@
 package jp.ac.tachibana.food_survey.http.model.session.websocket
 
-import cats.syntax.option.*
 import io.circe.Encoder
 import io.circe.syntax.*
 import org.http4s.websocket.WebSocketFrame
@@ -18,8 +17,8 @@ object OutputSessionMessageFormat:
   implicit val encoder: Encoder[OutputSessionMessageFormat] =
     Encoder.AsObject.instance { r =>
       val base = r match {
-        case rj: OutputSessionMessageFormat.RespondentJoined =>
-          Encoder.AsObject[OutputSessionMessageFormat.RespondentJoined].encodeObject(rj)
+        case rj: OutputSessionMessageFormat.UserJoined =>
+          Encoder.AsObject[OutputSessionMessageFormat.UserJoined].encodeObject(rj)
 
         case sb: OutputSessionMessageFormat.SessionBegan =>
           Encoder.AsObject[OutputSessionMessageFormat.SessionBegan].encodeObject(sb)
@@ -27,7 +26,7 @@ object OutputSessionMessageFormat:
       base.add("type", Encoder[OutputSessionMessageTypeFormat].apply(r.messageType))
     }
 
-  case class RespondentJoined(
+  case class UserJoined(
     user: UserFormat,
     session: SessionFormat)
       extends OutputSessionMessageFormat
@@ -39,24 +38,24 @@ object OutputSessionMessageFormat:
     val messageType: OutputSessionMessageTypeFormat =
       OutputSessionMessageTypeFormat.SessionBegan
 
-  def toWebSocketFrame(message: SessionListenerProgram.OutputMessage): Option[WebSocketFrame] =
+  def toWebSocketFrame(message: SessionListenerProgram.OutputMessage): WebSocketFrame =
     message match {
-      case SessionListenerProgram.OutputMessage.RespondentJoined(user, session) =>
+      case SessionListenerProgram.OutputMessage.UserJoined(user, session) =>
         jsonToSocketFrame(
-          OutputSessionMessageFormat.RespondentJoined(
+          OutputSessionMessageFormat.UserJoined(
             UserFormat.fromDomain(user),
             SessionFormat.fromDomain(session)
           )
-        ).some
+        )
 
       case SessionListenerProgram.OutputMessage.SessionBegan(session) =>
         jsonToSocketFrame(
           OutputSessionMessageFormat.SessionBegan(
             SessionFormat.fromDomain(session)
-          )).some
+          ))
 
       case SessionListenerProgram.OutputMessage.Shutdown =>
-        WebSocketFrame.Close(1000).toOption
+        WebSocketFrame.Close()
     }
 
   private def jsonToSocketFrame(format: OutputSessionMessageFormat): WebSocketFrame =

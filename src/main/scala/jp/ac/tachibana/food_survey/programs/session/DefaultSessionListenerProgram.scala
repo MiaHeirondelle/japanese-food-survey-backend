@@ -16,7 +16,7 @@ import jp.ac.tachibana.food_survey.programs.session.SessionListenerProgram.*
 
 // todo: fix syntax - context bounds?
 // todo: store users to check rights
-class WebSocketSessionListenerProgram[F[_]](
+class DefaultSessionListenerProgram[F[_]](
   statesMapRef: Ref[F, Map[Session.Number, Session]],
   outputsMapRef: Ref[F, Map[User.Id, Queue[F, SessionListenerProgram.OutputMessage]]],
   program: SessionProgram[F]
@@ -32,6 +32,7 @@ class WebSocketSessionListenerProgram[F[_]](
         _ <- statesMapRef.update(_.updated(session.number, session))
         output <- Queue.unbounded[F, SessionListenerProgram.OutputMessage]
         _ <- outputsMapRef.update(_.updated(creator.id, output))
+        _ <- broadcastMessage(SessionListenerProgram.OutputMessage.UserJoined(creator, session))(session)
         listener <- listenerBuilder(transformInput(creator), createOutputStream(output))
       } yield listener
     }.value
@@ -44,7 +45,7 @@ class WebSocketSessionListenerProgram[F[_]](
         _ <- statesMapRef.update(_.updated(session.number, session))
         output <- Queue.unbounded[F, SessionListenerProgram.OutputMessage]
         _ <- outputsMapRef.update(_.updated(respondent.id, output))
-        _ <- broadcastMessage(SessionListenerProgram.OutputMessage.RespondentJoined(respondent, session))(session)
+        _ <- broadcastMessage(SessionListenerProgram.OutputMessage.UserJoined(respondent, session))(session)
         listener <- listenerBuilder(transformInput(respondent), createOutputStream(output))
       } yield listener
     }.value
@@ -85,3 +86,11 @@ class WebSocketSessionListenerProgram[F[_]](
       output = allOutputs.get(userId)
       _ <- output.traverse(_.offer(message))
     } yield ()
+
+object DefaultSessionListenerProgram:
+
+  def create[F[_]](program: SessionProgram[F])(implicit F: GenConcurrent[F, ?]): F[SessionListenerProgram[F]] =
+    for {
+      statesMapRef <- Ref.of(Map.empty[Session.Number, Session])
+      outputsMapRef <- Ref.of(Map.empty[User.Id, Queue[F, SessionListenerProgram.OutputMessage]])
+    } yield new DefaultSessionListenerProgram[F](statesMapRef, outputsMapRef, program)

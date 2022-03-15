@@ -63,39 +63,35 @@ class DefaultSessionService[F[_]: Monad](
       }
     } yield result
 
-  override def join(respondent: User.Respondent): F[Either[SessionService.SessionJoinError, Unit]] =
+  override def join(respondent: User.Respondent): F[Either[SessionService.SessionJoinError, Session.NotBegan]] =
     // todo: check if user in awaiting session
     OptionT(sessionRepository.getActiveSession)
       .semiflatMap {
         case s: Session.AwaitingUsers =>
-          // todo: not persist
-          NonEmptyList.fromList(s.waitingForUsers.filterNot(_.id === respondent.id)) match {
-            case Some(waitingForUsers) =>
-              sessionRepository
-                .updateSession(
-                  s.copy(
-                    joinedUsers = respondent :: s.joinedUsers,
-                    waitingForUsers = waitingForUsers
-                  ))
-                .map(_.asRight[SessionService.SessionJoinError])
-
-            case None =>
-              // todo: not persist
-              sessionRepository
-                .updateSession(
-                  Session.CanBegin(
-                    number = s.number,
-                    joinedUsers = NonEmptyList.of(respondent, s.joinedUsers*),
-                    admin = s.admin
-                  )
+          val updatedSession: Session.NotBegan =
+            NonEmptyList.fromList(s.waitingForUsers.filterNot(_.id === respondent.id)) match {
+              case Some(waitingForUsers) =>
+                s.copy(
+                  joinedUsers = respondent :: s.joinedUsers,
+                  waitingForUsers = waitingForUsers
                 )
-                .map(_.asRight[SessionService.SessionJoinError])
-          }
+
+              case None =>
+                Session.CanBegin(
+                  number = s.number,
+                  joinedUsers = NonEmptyList.of(respondent, s.joinedUsers*),
+                  admin = s.admin
+                )
+            }
+
+          sessionRepository
+            .updateSession(updatedSession)
+            .as(updatedSession.asRight[SessionService.SessionJoinError])
 
         case _ =>
-          SessionService.SessionJoinError.WrongSessionStatus.asLeft[Unit].pure[F]
+          SessionService.SessionJoinError.WrongSessionStatus.asLeft[Session.NotBegan].pure[F]
       }
-      .getOrElse(SessionService.SessionJoinError.WrongSessionStatus.asLeft[Unit])
+      .getOrElse(SessionService.SessionJoinError.WrongSessionStatus.asLeft[Session.NotBegan])
 
   override def begin(admin: User.Admin): F[Either[SessionService.SessionBeginError, Session.InProgress]] =
     // todo: check admin the same as creator?

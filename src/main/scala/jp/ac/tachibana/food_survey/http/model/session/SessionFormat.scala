@@ -4,47 +4,47 @@ import io.circe.{Encoder, JsonObject}
 
 import jp.ac.tachibana.food_survey.domain.session.Session
 
-sealed abstract class SessionResponse(val status: SessionStatusFormat)
+sealed abstract class SessionFormat(val status: SessionStatusFormat)
 
-object SessionResponse:
+object SessionFormat:
 
-  implicit val encoder: Encoder[SessionResponse] =
+  implicit val encoder: Encoder[SessionFormat] =
     Encoder.AsObject.instance { r =>
       val base = r match {
-        case SessionResponse.NotCreated => JsonObject.empty
-        case au: SessionResponse.AwaitingUsers =>
-          Encoder.AsObject[SessionResponse.AwaitingUsers].encodeObject(au)
-        case cb: SessionResponse.CanBegin =>
-          Encoder.AsObject[SessionResponse.CanBegin].encodeObject(cb)
-        case ip: SessionResponse.InProgress =>
-          Encoder.AsObject[SessionResponse.InProgress].encodeObject(ip)
+        case SessionFormat.NotCreated => JsonObject.empty
+        case au: SessionFormat.AwaitingUsers =>
+          Encoder.AsObject[SessionFormat.AwaitingUsers].encodeObject(au)
+        case cb: SessionFormat.CanBegin =>
+          Encoder.AsObject[SessionFormat.CanBegin].encodeObject(cb)
+        case ip: SessionFormat.InProgress =>
+          Encoder.AsObject[SessionFormat.InProgress].encodeObject(ip)
       }
       base.add("status", Encoder[SessionStatusFormat].apply(r.status))
     }
 
-  def fromDomain(domainOpt: Option[Session]): SessionResponse =
-    domainOpt.fold(SessionResponse.NotCreated) {
+  def fromDomain(domainOpt: Option[Session]): SessionFormat =
+    domainOpt.fold(SessionFormat.NotCreated) {
       case Session.AwaitingUsers(number, joinedUsers, waitingForUsers, admin) =>
-        SessionResponse.AwaitingUsers(
+        SessionFormat.AwaitingUsers(
           number = number.value,
           joined_users = joinedUsers.map(_.id.value),
           awaiting_users = waitingForUsers.toList.map(_.id.value),
           admin = admin.id.value
         )
       case Session.CanBegin(number, joinedUsers, admin) =>
-        SessionResponse.CanBegin(
+        SessionFormat.CanBegin(
           number = number.value,
           joined_users = joinedUsers.toList.map(_.id.value),
           admin = admin.id.value
         )
       case Session.InProgress(number, joinedUsers, admin) =>
-        SessionResponse.InProgress(
+        SessionFormat.InProgress(
           number = number.value,
           joined_users = joinedUsers.toList.map(_.id.value),
           admin = admin.id.value
         )
       case _: Session.Finished =>
-        SessionResponse.NotCreated
+        SessionFormat.NotCreated
     }
 
   case class AwaitingUsers(
@@ -52,21 +52,21 @@ object SessionResponse:
     joined_users: List[String],
     awaiting_users: List[String],
     admin: String)
-      extends SessionResponse(SessionStatusFormat.AwaitingUsers)
+      extends SessionFormat(SessionStatusFormat.AwaitingUsers)
       derives Encoder.AsObject
 
   case class CanBegin(
     number: Int,
     joined_users: List[String],
     admin: String)
-      extends SessionResponse(SessionStatusFormat.CanBegin)
+      extends SessionFormat(SessionStatusFormat.CanBegin)
       derives Encoder.AsObject
 
   case class InProgress(
     number: Int,
     joined_users: List[String],
     admin: String)
-      extends SessionResponse(SessionStatusFormat.InProgress)
+      extends SessionFormat(SessionStatusFormat.InProgress)
       derives Encoder.AsObject
 
-  case object NotCreated extends SessionResponse(SessionStatusFormat.NotCreated)
+  case object NotCreated extends SessionFormat(SessionStatusFormat.NotCreated)

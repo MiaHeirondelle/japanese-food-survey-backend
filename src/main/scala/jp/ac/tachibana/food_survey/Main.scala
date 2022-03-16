@@ -12,7 +12,7 @@ import jp.ac.tachibana.food_survey.persistence.DatabaseTransactor
 import jp.ac.tachibana.food_survey.persistence.auth.{PostgresAuthTokenRepository, PostgresCredentialsRepository}
 import jp.ac.tachibana.food_survey.persistence.session.{CachingPostgresSessionRepository, PostgresSessionRepository}
 import jp.ac.tachibana.food_survey.persistence.user.PostgresUserRepository
-import jp.ac.tachibana.food_survey.programs.session.DefaultSessionProgram
+import jp.ac.tachibana.food_survey.programs.session.{DefaultSessionListenerProgram, DefaultSessionProgram}
 import jp.ac.tachibana.food_survey.programs.user.DefaultUserProgram
 import jp.ac.tachibana.food_survey.services.auth.DefaultAuthenticationService
 import jp.ac.tachibana.food_survey.services.session.DefaultSessionService
@@ -45,12 +45,13 @@ object Main extends IOApp.Simple:
 
           userProgram = new DefaultUserProgram[IO](authenticationService, userService)
           sessionProgram = new DefaultSessionProgram[IO](sessionService)
+          sessionListenerProgram <- DefaultSessionListenerProgram.create[IO](sessionProgram)
 
           httpService = new HttpService[IO](
             config = appConfig.http,
-            authenticationRoutes = new AuthenticationRoutes[IO](authenticationMiddleware, authenticationService),
-            new SessionRoutes[IO](authenticationMiddleware, sessionProgram),
-            new UserRoutes[IO](authenticationMiddleware, userProgram)
+            authenticationRoutesBuilder = _ => new AuthenticationRoutes[IO](authenticationMiddleware, authenticationService),
+            new SessionRoutes[IO](authenticationMiddleware, sessionListenerProgram)(_),
+            _ => new UserRoutes[IO](authenticationMiddleware, userProgram)
           )
           start <- httpService.start(runtime.compute)
         } yield start

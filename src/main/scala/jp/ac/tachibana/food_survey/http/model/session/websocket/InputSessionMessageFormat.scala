@@ -30,6 +30,9 @@ object InputSessionMessageFormat:
     frame match {
       case WebSocketFrame.Text(text, _) =>
         decode[InputSessionMessageFormat](text).fold(_ => None, _.toDomain.some)
+
+      case _ =>
+        None
     }
 
   extension (format: InputSessionMessageFormat)

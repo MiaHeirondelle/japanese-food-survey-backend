@@ -31,7 +31,7 @@ object OutputSessionMessageFormat:
       extends OutputSessionMessageFormat
       derives Encoder.AsObject:
     val messageType: OutputSessionMessageTypeFormat =
-      OutputSessionMessageTypeFormat.RespondentJoined
+      OutputSessionMessageTypeFormat.UserJoined
 
   case class SessionBegan(sessionFormat: SessionFormat) extends OutputSessionMessageFormat derives Encoder.AsObject:
     val messageType: OutputSessionMessageTypeFormat =

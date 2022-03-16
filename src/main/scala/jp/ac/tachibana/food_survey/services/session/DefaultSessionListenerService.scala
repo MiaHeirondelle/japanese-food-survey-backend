@@ -14,27 +14,28 @@ import jp.ac.tachibana.food_survey.domain.user.User
 import jp.ac.tachibana.food_survey.domain.user.User.Id
 import jp.ac.tachibana.food_survey.persistence.session.SessionRepository
 import jp.ac.tachibana.food_survey.services.session.SessionListenerService
+import jp.ac.tachibana.food_survey.services.session.model.*
 
 // todo: fix syntax - context bounds?
 // todo: store users to check rights
 class DefaultSessionListenerService[F[_]](
   sessionRepository: SessionRepository[F],
-  outputsMapRef: Ref[F, Map[User.Id, Queue[F, SessionListenerService.OutputMessage]]]
+  outputsMapRef: Ref[F, Map[User.Id, Queue[F, OutputSessionMessage]]]
 )(implicit F: GenConcurrent[F, ?])
     extends SessionListenerService[F]:
 
   override def connect[L](
-    listenerBuilder: SessionListenerService.ListenerBuilder[F, L],
-    processor: SessionListenerService.MessageProcessor[F]
+    listenerBuilder: SessionListenerBuilder[F, L],
+    processor: SessionMessageProcessor[F]
   )(user: User): F[Either[SessionListenerService.ConnectionError, L]] =
     OptionT(sessionRepository.getActiveSession)
       .filter(_.participants.exists(_.id === user.id))
       .semiflatMap { session =>
         for {
-          output <- Queue.unbounded[F, SessionListenerService.OutputMessage]
+          output <- Queue.unbounded[F, OutputSessionMessage]
           // todo: check reconnections -> close old sockets?
           _ <- outputsMapRef.update(_.updated(user.id, output))
-          _ <- broadcastMessage(SessionListenerService.OutputMessage.UserJoined(user, session))(session)
+          _ <- broadcastMessage(OutputSessionMessage.UserJoined(user, session))(session)
           listener <- listenerBuilder(transformInput(processor, user), createOutputStream(output))
         } yield listener
       }
@@ -45,14 +46,14 @@ class DefaultSessionListenerService[F[_]](
     unregisterListeners
 
   private def createOutputStream(
-    queue: Queue[F, SessionListenerService.OutputMessage]): SessionListenerService.ListenerOutput[F] =
+    queue: Queue[F, OutputSessionMessage]): SessionListenerOutput[F] =
     fs2.Stream.fromQueueUnterminated(queue)
 
   // todo: on close unregister?
   private def transformInput(
-    processor: SessionListenerService.MessageProcessor[F],
+    processor: SessionMessageProcessor[F],
     user: User
-  )(input: SessionListenerService.ListenerInput[F]): fs2.Stream[F, Unit] =
+  )(input: SessionListenerInput[F]): fs2.Stream[F, Unit] =
     input.evalMap { inputMessage =>
       val processF = for {
         session <- OptionT(sessionRepository.getActiveSession)
@@ -63,15 +64,15 @@ class DefaultSessionListenerService[F[_]](
     }
 
   private def unregisterListeners: F[Unit] =
-    broadcastMessageToAll(SessionListenerService.OutputMessage.Shutdown) >> outputsMapRef.set(Map.empty)
+    broadcastMessageToAll(OutputSessionMessage.Shutdown) >> outputsMapRef.set(Map.empty)
 
-  private def broadcastMessageToAll(message: SessionListenerService.OutputMessage): F[Unit] =
+  private def broadcastMessageToAll(message: OutputSessionMessage): F[Unit] =
     sessionRepository.getActiveSession.map(_.traverse(broadcastMessage(message)))
 
-  private def broadcastMessage(message: SessionListenerService.OutputMessage)(session: Session): F[Unit] =
+  private def broadcastMessage(message: OutputSessionMessage)(session: Session): F[Unit] =
     session.participants.traverse(u => sendMessage(message)(u.id)).void
 
-  private def sendMessage(message: SessionListenerService.OutputMessage)(userId: User.Id): F[Unit] =
+  private def sendMessage(message: OutputSessionMessage)(userId: User.Id): F[Unit] =
     for {
       allOutputs <- outputsMapRef.get
       output = allOutputs.get(userId)
@@ -82,5 +83,5 @@ object DefaultSessionListenerService:
 
   def create[F[_]](sessionRepository: SessionRepository[F])(implicit F: GenConcurrent[F, ?]): F[SessionListenerService[F]] =
     for {
-      outputsMapRef <- Ref.of(Map.empty[User.Id, Queue[F, SessionListenerService.OutputMessage]])
+      outputsMapRef <- Ref.of(Map.empty[User.Id, Queue[F, OutputSessionMessage]])
     } yield new DefaultSessionListenerService[F](sessionRepository, outputsMapRef)

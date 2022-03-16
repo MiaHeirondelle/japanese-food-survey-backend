@@ -50,7 +50,7 @@ object Main extends IOApp.Simple:
           httpService = new HttpService[IO](
             config = appConfig.http,
             authenticationRoutesBuilder = _ => new AuthenticationRoutes[IO](authenticationMiddleware, authenticationService),
-            new SessionRoutes[IO](authenticationMiddleware, sessionListenerProgram)(_),
+            new SessionRoutes[IO](authenticationMiddleware, sessionProgram, sessionListenerProgram)(_),
             _ => new UserRoutes[IO](authenticationMiddleware, userProgram)
           )
           start <- httpService.start(runtime.compute)

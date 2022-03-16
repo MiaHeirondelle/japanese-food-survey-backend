@@ -6,8 +6,7 @@ import org.http4s.websocket.WebSocketFrame
 
 import jp.ac.tachibana.food_survey.http.model.session.SessionFormat
 import jp.ac.tachibana.food_survey.http.model.user.UserFormat
-import jp.ac.tachibana.food_survey.programs.session.SessionListenerProgram
-import jp.ac.tachibana.food_survey.programs.session.SessionListenerProgram.OutputMessage
+import jp.ac.tachibana.food_survey.services.session.model.*
 
 sealed trait OutputSessionMessageFormat:
   def messageType: OutputSessionMessageTypeFormat
@@ -38,9 +37,9 @@ object OutputSessionMessageFormat:
     val messageType: OutputSessionMessageTypeFormat =
       OutputSessionMessageTypeFormat.SessionBegan
 
-  def toWebSocketFrame(message: SessionListenerProgram.OutputMessage): WebSocketFrame =
+  def toWebSocketFrame(message: OutputSessionMessage): WebSocketFrame =
     message match {
-      case SessionListenerProgram.OutputMessage.UserJoined(user, session) =>
+      case OutputSessionMessage.UserJoined(user, session) =>
         jsonToSocketFrame(
           OutputSessionMessageFormat.UserJoined(
             UserFormat.fromDomain(user),
@@ -48,13 +47,13 @@ object OutputSessionMessageFormat:
           )
         )
 
-      case SessionListenerProgram.OutputMessage.SessionBegan(session) =>
+      case OutputSessionMessage.SessionBegan(session) =>
         jsonToSocketFrame(
           OutputSessionMessageFormat.SessionBegan(
             SessionFormat.fromDomain(session)
           ))
 
-      case SessionListenerProgram.OutputMessage.Shutdown =>
+      case OutputSessionMessage.Shutdown =>
         WebSocketFrame.Close()
     }
 

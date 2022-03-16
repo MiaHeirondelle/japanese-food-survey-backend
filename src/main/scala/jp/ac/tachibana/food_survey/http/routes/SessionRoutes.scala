@@ -20,9 +20,11 @@ import jp.ac.tachibana.food_survey.http.model.session.websocket.{InputSessionMes
 import jp.ac.tachibana.food_survey.http.model.session.{CreateSessionRequest, SessionFormat}
 import jp.ac.tachibana.food_survey.programs.session.{SessionListenerProgram, SessionProgram}
 import jp.ac.tachibana.food_survey.services.auth.domain.AuthDetails
+import jp.ac.tachibana.food_survey.services.session.model.*
 
 class SessionRoutes[F[_]: Async](
   authenticationMiddleware: AuthenticationMiddleware[F],
+  sessionProgram: SessionProgram[F],
   sessionListenerProgram: SessionListenerProgram[F]
 )(webSocketBuilder: WebSocketBuilder2[F])
     extends HttpService.Routes[F] with Http4sDslBinCompat[F]:
@@ -30,7 +32,7 @@ class SessionRoutes[F[_]: Async](
   private def baseRoutes: AuthedRoutes[AuthDetails, F] =
     AuthedRoutes.of { case GET -> Root as _ =>
       for {
-        sessionOpt <- sessionListenerProgram.getActiveSession
+        sessionOpt <- sessionProgram.getActiveSession
         result <- Ok(SessionFormat.fromDomainOpt(sessionOpt))
       } yield result
     }
@@ -38,10 +40,10 @@ class SessionRoutes[F[_]: Async](
   private def respondentOnlyRoutes: AuthedRoutes[AuthDetails.Respondent, F] =
     AuthedRoutes.of { case POST -> Root / "join" as respondent =>
       for {
-        sessionJoined <- sessionListenerProgram.join(socketListenerResponseBuilder)(respondent.user)
+        sessionJoined <- sessionProgram.join(respondent.user)
         result <- sessionJoined match {
-          case Right(response) =>
-            response.pure[F]
+          case Right(session) =>
+            Ok(SessionFormat.fromDomain(session))
 
           case Left(_) =>
             Conflict()
@@ -54,12 +56,10 @@ class SessionRoutes[F[_]: Async](
       case request @ POST -> Root / "create" as admin =>
         for {
           createSessionRequest <- request.req.as[CreateSessionRequest]
-          result <- sessionListenerProgram.create(socketListenerResponseBuilder)(
-            admin.user,
-            createSessionRequest.respondents.map(User.Id(_)))
-          result <- result match {
-            case Right(response) =>
-              response.pure[F]
+          sessionCreated <- sessionProgram.create(admin.user, createSessionRequest.respondents.map(User.Id(_)))
+          result <- sessionCreated match {
+            case Right(session) =>
+              Ok(SessionFormat.fromDomain(session))
 
             case Left(_) =>
               Conflict()
@@ -67,7 +67,7 @@ class SessionRoutes[F[_]: Async](
         } yield result
 
       case POST -> Root / "stop" as admin =>
-        sessionListenerProgram.stop >> Ok()
+        sessionListenerProgram.stop >> sessionProgram.stop >> Ok()
     }
 
   override val routes: HttpRoutes[F] =
@@ -76,8 +76,8 @@ class SessionRoutes[F[_]: Async](
         adminOnlyRoutes) <+> authenticationMiddleware.respondentOnlyMiddleware(respondentOnlyRoutes)))
 
   private def socketListenerResponseBuilder(
-    listenerInputTransformer: SessionListenerProgram.ListenerInputTransformer[F],
-    listenerOutput: SessionListenerProgram.ListenerOutput[F]): F[Response[F]] =
+    listenerInputTransformer: SessionListenerInputTransformer[F],
+    listenerOutput: SessionListenerOutput[F]): F[Response[F]] =
     webSocketBuilder.build(
       send = listenerOutput.map(OutputSessionMessageFormat.toWebSocketFrame),
       receive =

@@ -4,51 +4,19 @@ import cats.data.NonEmptyList
 
 import jp.ac.tachibana.food_survey.domain.session.Session
 import jp.ac.tachibana.food_survey.domain.user.User
-import jp.ac.tachibana.food_survey.programs.session.SessionListenerProgram.*
+import jp.ac.tachibana.food_survey.services.session.model.*
 
 trait SessionListenerProgram[F[_]]:
 
-  def getActiveSession: F[Option[Session]]
-
-  def create[L](
-    listenerBuilder: ListenerBuilder[F, L]
-  )(creator: User.Admin,
-    respondents: NonEmptyList[User.Id]): F[Either[SessionProgram.SessionCreationError, L]]
-
-  def join[L](
-    listenerBuilder: ListenerBuilder[F, L]
-  )(respondent: User.Respondent): F[Either[SessionProgram.SessionJoinError, L]]
+  def connect[L](listenerBuilder: SessionListenerBuilder[F, L])(user: User): F[Either[SessionListenerProgram.ConnectionError, L]]
 
   // todo: update signature
   def stop: F[Unit]
 
 object SessionListenerProgram:
 
-  type ListenerInput[F[_]] =
-    fs2.Stream[F, SessionListenerProgram.InputMessage]
+  sealed trait ConnectionError
 
-  type ListenerOutput[F[_]] =
-    fs2.Stream[F, SessionListenerProgram.OutputMessage]
+  object ConnectionError:
 
-  type ListenerInputTransformer[F[_]] =
-    ListenerInput[F] => fs2.Stream[F, Unit]
-
-  type ListenerBuilder[F[_], L] =
-    (ListenerInputTransformer[F], ListenerOutput[F]) => F[L]
-
-  sealed trait InputMessage
-
-  object InputMessage:
-    case class BeginSession(sessionNumber: Session.Number) extends SessionListenerProgram.InputMessage
-
-  sealed trait OutputMessage
-
-  object OutputMessage:
-    case class UserJoined(
-      user: User,
-      session: Session.NotBegan)
-        extends SessionListenerProgram.OutputMessage
-
-    case class SessionBegan(session: Session.InProgress) extends SessionListenerProgram.OutputMessage
-
-    case object Shutdown extends SessionListenerProgram.OutputMessage
+    case object InvalidSessionState extends SessionListenerProgram.ConnectionError

@@ -13,8 +13,7 @@ trait SessionProgram[F[_]]:
     creator: User.Admin,
     respondents: NonEmptyList[User.Id]): F[Either[SessionProgram.SessionCreationError, Session.AwaitingUsers]]
 
-  def join(
-    respondent: User.Respondent): F[Either[SessionProgram.SessionJoinError, Session.NotBegan]]
+  def join(respondent: User.Respondent): F[Either[SessionProgram.SessionJoinError, Session.NotBegan]]
 
   // todo: update signature
   def stop: F[Unit]

@@ -15,7 +15,7 @@ import jp.ac.tachibana.food_survey.persistence.user.PostgresUserRepository
 import jp.ac.tachibana.food_survey.programs.session.{DefaultSessionListenerProgram, DefaultSessionProgram}
 import jp.ac.tachibana.food_survey.programs.user.DefaultUserProgram
 import jp.ac.tachibana.food_survey.services.auth.DefaultAuthenticationService
-import jp.ac.tachibana.food_survey.services.session.DefaultSessionService
+import jp.ac.tachibana.food_survey.services.session.{DefaultSessionListenerService, DefaultSessionService}
 import jp.ac.tachibana.food_survey.services.user.DefaultUserService
 
 object Main extends IOApp.Simple:
@@ -36,6 +36,7 @@ object Main extends IOApp.Simple:
           authenticationService <- DefaultAuthenticationService
             .create[IO](authTokenRepository, credentialsRepository, userRepository)
           sessionService = new DefaultSessionService[IO](sessionRepository, userRepository)
+          sessionListenerService <- DefaultSessionListenerService.create[IO](sessionRepository)
           authenticationMiddleware =
             new AuthenticationMiddleware[IO](
               appConfig.http.authentication,
@@ -45,7 +46,7 @@ object Main extends IOApp.Simple:
 
           userProgram = new DefaultUserProgram[IO](authenticationService, userService)
           sessionProgram = new DefaultSessionProgram[IO](sessionService)
-          sessionListenerProgram <- DefaultSessionListenerProgram.create[IO](sessionProgram)
+          sessionListenerProgram = new DefaultSessionListenerProgram(sessionService, sessionListenerService)
 
           httpService = new HttpService[IO](
             config = appConfig.http,

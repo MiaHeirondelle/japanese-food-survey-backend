@@ -30,11 +30,25 @@ class SessionRoutes[F[_]: Async](
     extends HttpService.Routes[F] with Http4sDslBinCompat[F]:
 
   private def baseRoutes: AuthedRoutes[AuthDetails, F] =
-    AuthedRoutes.of { case GET -> Root as _ =>
-      for {
-        sessionOpt <- sessionProgram.getActiveSession
-        result <- Ok(SessionFormat.fromDomainOpt(sessionOpt))
-      } yield result
+    AuthedRoutes.of {
+      case GET -> Root / "active" as _ =>
+        for {
+          sessionOpt <- sessionProgram.getActiveSession
+          result <- Ok(SessionFormat.fromDomainOpt(sessionOpt))
+        } yield result
+
+      // GET method to allow websocket connections
+      case GET -> Root / "connect" as user =>
+        for {
+          connected <- sessionListenerProgram.connect(socketListenerResponseBuilder)(user.user)
+          result <- connected match {
+            case Right(response) =>
+              response.pure[F]
+
+            case Left(_) =>
+              Conflict()
+          }
+        } yield result
     }
 
   private def respondentOnlyRoutes: AuthedRoutes[AuthDetails.Respondent, F] =

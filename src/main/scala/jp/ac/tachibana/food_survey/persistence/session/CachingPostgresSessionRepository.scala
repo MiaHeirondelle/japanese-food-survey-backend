@@ -2,13 +2,13 @@ package jp.ac.tachibana.food_survey.persistence.session
 
 import java.util.concurrent.Semaphore
 
-import cats.{Applicative, Monad}
 import cats.effect.{Async, Concurrent, Ref}
 import cats.syntax.applicative.*
 import cats.syntax.eq.*
 import cats.syntax.flatMap.*
 import cats.syntax.functor.*
 import cats.syntax.order.*
+import cats.{Applicative, Monad}
 import doobie.Transactor
 
 import jp.ac.tachibana.food_survey.domain.session.Session
@@ -55,8 +55,6 @@ class CachingPostgresSessionRepository[F[_]: Monad](
   private def updateCacheToLatest(session: Session): F[Unit] =
     for {
       cachedSession <- activeSessionCache.get
-      _ = println(session)
-      _ = println(cachedSession)
       result <- if (cachedSession.exists(_.number <= session.number)) updateCache(session) else Applicative[F].unit
     } yield result
 

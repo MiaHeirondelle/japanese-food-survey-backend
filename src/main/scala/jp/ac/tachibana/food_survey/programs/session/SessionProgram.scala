@@ -16,8 +16,6 @@ trait SessionProgram[F[_]]:
   def join(
     respondent: User.Respondent): F[Either[SessionProgram.SessionJoinError, Session.NotBegan]]
 
-  def begin(admin: User.Admin): F[Either[SessionProgram.SessionBeginError, Session.InProgress]]
-
   // todo: update signature
   def stop: F[Unit]
 
@@ -36,8 +34,3 @@ object SessionProgram:
 
     case object WrongSessionStatus extends SessionJoinError
     case object InvalidParticipant extends SessionJoinError
-
-  sealed trait SessionBeginError
-
-  object SessionBeginError:
-    case object WrongSessionStatus extends SessionBeginError

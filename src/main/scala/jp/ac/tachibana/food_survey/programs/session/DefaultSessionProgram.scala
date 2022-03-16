@@ -36,12 +36,5 @@ class DefaultSessionProgram[F[_]: Functor](sessionService: SessionService[F]) ex
           SessionProgram.SessionJoinError.WrongSessionStatus
       })
 
-  override def begin(admin: User.Admin): F[Either[SessionProgram.SessionBeginError, Session.InProgress]] =
-    sessionService
-      .begin(admin)
-      .map(_.left.map { case SessionService.SessionBeginError.WrongSessionStatus =>
-        SessionProgram.SessionBeginError.WrongSessionStatus
-      })
-
   override def stop: F[Unit] =
     sessionService.stop

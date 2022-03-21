@@ -10,17 +10,18 @@ import cats.syntax.functor.*
 
 import jp.ac.tachibana.food_survey.domain.session.Session
 import jp.ac.tachibana.food_survey.domain.user.User
-import jp.ac.tachibana.food_survey.persistence.session.SessionRepository
+import jp.ac.tachibana.food_survey.persistence.session.{SessionRepository, SessionTemplateRepository}
 import jp.ac.tachibana.food_survey.persistence.user.UserRepository
 
 class DefaultSessionService[F[_]: Monad](
   sessionRepository: SessionRepository[F],
+  sessionTemplateRepository: SessionTemplateRepository[F],
   userRepository: UserRepository[F])
     extends SessionService[F]:
 
   // todo: current session state (cached)
 
-  override def getActiveSession: F[Option[Session]] =
+  override def getActiveSession: F[Option[Session.NotFinished]] =
     sessionRepository.getActiveSession
 
   override def create(
@@ -98,16 +99,11 @@ class DefaultSessionService[F[_]: Monad](
     OptionT(sessionRepository.getActiveSession)
       .semiflatMap {
         case s: Session.CanBegin =>
-          val session = Session.InProgress(
-            number = s.number,
-            joinedUsers = s.joinedUsers,
-            admin = s.admin
-          )
-          sessionRepository
-            .updateSession(
-              session
-            )
-            .as(session.asRight[SessionService.SessionBeginError])
+          for {
+            template <- sessionTemplateRepository.getActiveTemplate
+            session = Session.InProgress.fromTemplate(s, template)
+            _ <- sessionRepository.updateSession(session)
+          } yield session.asRight[SessionService.SessionBeginError]
 
         case _ =>
           SessionService.SessionBeginError.WrongSessionStatus.asLeft[Session.InProgress].pure[F]

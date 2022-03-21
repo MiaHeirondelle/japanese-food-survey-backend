@@ -11,7 +11,7 @@ import jp.ac.tachibana.food_survey.services.session.SessionService.SessionCreati
 
 class DefaultSessionProgram[F[_]: Functor](sessionService: SessionService[F]) extends SessionProgram[F]:
 
-  override def getActiveSession: F[Option[Session]] =
+  override def getActiveSession: F[Option[Session.NotFinished]] =
     sessionService.getActiveSession
 
   override def create(

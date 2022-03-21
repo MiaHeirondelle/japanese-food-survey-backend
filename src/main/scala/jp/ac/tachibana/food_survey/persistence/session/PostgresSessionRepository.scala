@@ -11,6 +11,7 @@ import doobie.implicits.*
 import doobie.postgres.circe.jsonb.implicits.*
 import doobie.postgres.implicits.*
 
+import jp.ac.tachibana.food_survey.domain.question.QuestionAnswer
 import jp.ac.tachibana.food_survey.domain.session.Session
 import jp.ac.tachibana.food_survey.domain.user.User
 import jp.ac.tachibana.food_survey.persistence.util.ParameterInstances.*
@@ -26,32 +27,29 @@ class PostgresSessionRepository[F[_]: Async](implicit tr: Transactor[F]) extends
       .option
       .transact(tr)
 
-  override def getActiveSession: F[Option[Session]] =
+  override def getActiveSession: F[Option[Session.NotFinished]] =
     val query = selectActiveSessionQuery
       .flatMap(_.traverse(activeSession =>
         for {
           respondents <- selectSessionRespondentsQuery(activeSession.number)
           admin <- selectSessionAdminQuery(activeSession.admin)
-        } yield activeSession match {
-          case s: SessionPostgresFormat.AwaitingUsers =>
-            Session.AwaitingUsers(
-              number = s.number,
-              joinedUsers = Nil,
-              waitingForUsers = respondents,
-              admin = admin
-            )
-          case s: SessionPostgresFormat.Finished =>
-            Session.Finished(
-              number = s.number,
-              joinedUsers = respondents,
-              admin = admin
-            )
-        }))
+          result: Session.NotFinished <- activeSession match {
+            case s: SessionPostgresFormat.AwaitingUsers =>
+              Session
+                .AwaitingUsers(
+                  number = s.number,
+                  joinedUsers = Nil,
+                  waitingForUsers = respondents,
+                  admin = admin
+                )
+                .pure[ConnectionIO]
+          }
+        } yield result))
     query.transact(tr)
 
-  private val selectActiveSessionQuery: ConnectionIO[Option[SessionPostgresFormat]] =
+  private val selectActiveSessionQuery: ConnectionIO[Option[SessionPostgresFormat.AwaitingUsers]] =
     sql"""SELECT session_number, admin_id, status, state FROM "survey_session" WHERE status != 'finished'"""
-      .query[SessionPostgresFormat]
+      .query[SessionPostgresFormat.AwaitingUsers]
       .option
 
   private def selectSessionRespondentsQuery(sessionNumber: Session.Number): ConnectionIO[NonEmptyList[User.Respondent]] =

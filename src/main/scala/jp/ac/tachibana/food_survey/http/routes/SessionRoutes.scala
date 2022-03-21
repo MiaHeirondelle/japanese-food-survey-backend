@@ -34,7 +34,7 @@ class SessionRoutes[F[_]: Async](
       case GET -> Root / "active" as _ =>
         for {
           sessionOpt <- sessionProgram.getActiveSession
-          result <- Ok(SessionFormat.fromDomainOpt(sessionOpt))
+          result <- Ok(SessionFormat.fromDomainNotFinishedOpt(sessionOpt))
         } yield result
 
       // GET method to allow websocket connections
@@ -57,7 +57,7 @@ class SessionRoutes[F[_]: Async](
         sessionJoined <- sessionProgram.join(respondent.user)
         result <- sessionJoined match {
           case Right(session) =>
-            Ok(SessionFormat.fromDomain(session))
+            Ok(SessionFormat.fromDomainNotFinished(session))
 
           case Left(_) =>
             Conflict()
@@ -73,7 +73,7 @@ class SessionRoutes[F[_]: Async](
           sessionCreated <- sessionProgram.create(admin.user, createSessionRequest.respondents.map(User.Id(_)))
           result <- sessionCreated match {
             case Right(session) =>
-              Ok(SessionFormat.fromDomain(session))
+              Ok(SessionFormat.fromDomainNotFinished(session))
 
             case Left(_) =>
               Conflict()

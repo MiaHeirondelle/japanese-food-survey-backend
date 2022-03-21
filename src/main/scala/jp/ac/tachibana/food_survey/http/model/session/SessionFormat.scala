@@ -23,7 +23,7 @@ object SessionFormat:
       base.add("status", Encoder[SessionStatusFormat].apply(r.status))
     }
 
-  def fromDomain(session: Session): SessionFormat =
+  def fromDomainNotFinished(session: Session.NotFinished): SessionFormat =
     session match {
       case Session.AwaitingUsers(number, joinedUsers, waitingForUsers, admin) =>
         SessionFormat.AwaitingUsers(
@@ -38,18 +38,16 @@ object SessionFormat:
           joined_users = joinedUsers.toList.map(UserFormat.fromDomain),
           admin = UserFormat.fromDomain(admin)
         )
-      case Session.InProgress(number, joinedUsers, admin) =>
+      case Session.InProgress(number, joinedUsers, admin, _, _, _) =>
         SessionFormat.InProgress(
           number = number.value,
           joined_users = joinedUsers.toList.map(UserFormat.fromDomain),
           admin = UserFormat.fromDomain(admin)
         )
-      case _: Session.Finished =>
-        SessionFormat.NotCreated
     }
 
-  def fromDomainOpt(domainOpt: Option[Session]): SessionFormat =
-    domainOpt.fold(SessionFormat.NotCreated)(fromDomain)
+  def fromDomainNotFinishedOpt(domainOpt: Option[Session.NotFinished]): SessionFormat =
+    domainOpt.fold(SessionFormat.NotCreated)(fromDomainNotFinished)
 
   case class AwaitingUsers(
     number: Int,

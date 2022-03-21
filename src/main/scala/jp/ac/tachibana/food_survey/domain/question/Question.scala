@@ -15,6 +15,12 @@ object Question:
 
   opaque type Id = String
 
+  object Id:
+
+    def apply(questionId: String): Question.Id = questionId
+
+    extension (questionId: Question.Id) def value: String = questionId
+
   case class Basic(
     id: Question.Id,
     text: String,

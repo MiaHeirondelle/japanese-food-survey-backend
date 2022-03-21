@@ -4,6 +4,7 @@ import cats.data.NonEmptyList
 import cats.instances.int.*
 import cats.{Eq, Order}
 
+import jp.ac.tachibana.food_survey.domain.question.QuestionAnswer
 import jp.ac.tachibana.food_survey.domain.user.User
 
 sealed abstract class Session:
@@ -39,47 +40,62 @@ object Session:
   extension (session: Session)
     def participants: NonEmptyList[User] =
       session match {
-        case AwaitingUsers(number, joinedUsers, waitingForUsers, admin) =>
+        case AwaitingUsers(_, joinedUsers, waitingForUsers, admin) =>
           NonEmptyList.of(admin, joinedUsers*) ::: waitingForUsers
-        case CanBegin(number, joinedUsers, admin) =>
+        case CanBegin(_, joinedUsers, admin) =>
           admin :: joinedUsers
-        case InProgress(number, joinedUsers, admin) =>
+        case InProgress(_, joinedUsers, admin, _, _, _) =>
           admin :: joinedUsers
-        case Finished(number, joinedUsers, admin) =>
+        case Finished(_, joinedUsers, admin, _) =>
           admin :: joinedUsers
       }
 
   sealed trait NotFinished extends Session
-  sealed trait NotBegan extends Session
+  sealed trait NotBegan extends Session with Session.NotFinished
 
   case class AwaitingUsers(
     number: Session.Number,
     joinedUsers: List[User.Respondent],
     waitingForUsers: NonEmptyList[User.Respondent],
     admin: User.Admin)
-      extends NotFinished with NotBegan:
+      extends Session.NotBegan:
     val status: Session.Status = Session.Status.AwaitingUsers
 
   case class CanBegin(
     number: Session.Number,
     joinedUsers: NonEmptyList[User.Respondent],
     admin: User.Admin)
-      extends NotFinished with NotBegan:
+      extends Session.NotBegan:
     val status: Session.Status = Session.Status.CanBegin
 
   case class InProgress(
     number: Session.Number,
     joinedUsers: NonEmptyList[User.Respondent],
-    admin: User.Admin
-    // todo: remaining questions (nel)
-    // todo: replies
-  ) extends NotFinished:
+    admin: User.Admin,
+    answers: Vector[QuestionAnswer],
+    currentElement: SessionElement.Number,
+    template: SessionTemplate)
+      extends Session.NotFinished:
     val status: Session.Status = Session.Status.InProgress
+
+  object InProgress:
+
+    def fromTemplate(
+      session: Session.CanBegin,
+      template: SessionTemplate): Session.InProgress =
+      Session.InProgress(
+        session.number,
+        session.joinedUsers,
+        session.admin,
+        answers = Vector.empty,
+        currentElement = SessionElement.Number.zero,
+        template
+      )
 
   case class Finished(
     number: Session.Number,
     joinedUsers: NonEmptyList[User.Respondent],
-    admin: User.Admin
-    // todo: replies (nel)
-  ) extends Session:
+    admin: User.Admin,
+    answers: NonEmptyList[QuestionAnswer])
+      extends Session:
     val status: Session.Status = Session.Status.Finished

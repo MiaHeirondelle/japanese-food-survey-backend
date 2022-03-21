@@ -7,7 +7,7 @@ import jp.ac.tachibana.food_survey.domain.user.User
 
 trait SessionProgram[F[_]]:
 
-  def getActiveSession: F[Option[Session]]
+  def getActiveSession: F[Option[Session.NotFinished]]
 
   def create(
     creator: User.Admin,

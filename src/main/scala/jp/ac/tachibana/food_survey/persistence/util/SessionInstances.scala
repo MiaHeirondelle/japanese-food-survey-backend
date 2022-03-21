@@ -1,6 +1,8 @@
 package jp.ac.tachibana.food_survey.persistence.util
 
+import cats.Show
 import cats.data.NonEmptyList
+import cats.syntax.show.*
 import doobie.*
 import doobie.implicits.*
 import doobie.postgres.circe.jsonb.implicits.*
@@ -33,24 +35,24 @@ trait SessionInstances:
       }
     )
 
-  implicit val sessionPostgresFormatRead: Read[SessionPostgresFormat] =
+  implicit val activeSessionPostgresFormatStatusMeta: Meta[SessionPostgresFormat.Status.AwaitingUsers.type] =
+    new Meta(
+      sessionPostgresFormatStatusMeta.get.temap {
+        case SessionPostgresFormat.Status.AwaitingUsers => Right(SessionPostgresFormat.Status.AwaitingUsers)
+        case s @ SessionPostgresFormat.Status.Finished  => Left(show"Incorrect session status value $s")
+      },
+      sessionPostgresFormatStatusMeta.put.contramap(x => x)
+    )
+
+  implicit val sessionPostgresFormatRead: Read[SessionPostgresFormat.AwaitingUsers] =
     // todo: fix toOption.get
-    Read[(Session.Number, User.Id, SessionPostgresFormat.Status, Json)]
-      .map { case (number, adminId, status, state) =>
-        status match {
-          case SessionPostgresFormat.Status.AwaitingUsers =>
-            val decodedState = state.as[SessionStatePostgresFormat.AwaitingUsers].toOption.get
-            SessionPostgresFormat.AwaitingUsers(
-              number = number,
-              admin = adminId
-            )
-          case SessionPostgresFormat.Status.Finished =>
-            val decodedState = state.as[SessionStatePostgresFormat.Finished].toOption.get
-            SessionPostgresFormat.Finished(
-              number = number,
-              admin = adminId
-            )
-        }
+    Read[(Session.Number, User.Id, SessionPostgresFormat.Status.AwaitingUsers.type, Json)]
+      .map { case (number, adminId, _, state) =>
+        val decodedState = state.as[SessionStatePostgresFormat.AwaitingUsers].toOption.get
+        SessionPostgresFormat.AwaitingUsers(
+          number = number,
+          admin = adminId
+        )
       }
 
   implicit val sessionPostgresFormatWrite: Write[SessionPostgresFormat] =
@@ -76,6 +78,10 @@ object SessionInstances extends SessionInstances:
       case AwaitingUsers, Finished
 
     object Status:
+
+      implicit val show: Show[SessionPostgresFormat.Status] =
+        Show.fromToString
+
       def fromDomain(status: Session.Status): SessionPostgresFormat.Status =
         status match {
           case Session.Status.AwaitingUsers =>

@@ -10,6 +10,16 @@ object User:
 
   opaque type Id = String
 
+  object Id:
+
+    // todo: fix?
+    implicit val order: Order[User.Id] =
+      Order.from((v1, v2) => v1.value.compare(v2.value))
+
+    def apply(userId: String): User.Id = userId
+
+    extension (userId: User.Id) def value: String = userId
+
   def apply(
     id: User.Id,
     name: String,
@@ -30,16 +40,6 @@ object User:
     id: User.Id,
     name: String)
       extends User(Role.Admin)
-
-  object Id:
-
-    // todo: fix?
-    implicit val order: Order[User.Id] =
-      Order.from((v1, v2) => v1.value.compare(v2.value))
-
-    def apply(userId: String): User.Id = userId
-
-    extension (userId: User.Id) def value: String = userId
 
   enum Role:
     case Respondent, Admin

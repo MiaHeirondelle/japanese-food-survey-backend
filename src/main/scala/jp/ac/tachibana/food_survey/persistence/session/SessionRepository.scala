@@ -6,7 +6,7 @@ trait SessionRepository[F[_]]:
 
   def getLatestSessionNumber: F[Option[Session.Number]]
 
-  def getActiveSession: F[Option[Session]]
+  def getActiveSession: F[Option[Session.NotFinished]]
 
   // todo: session already in progress error
   def createNewSession(session: Session.AwaitingUsers): F[Unit]

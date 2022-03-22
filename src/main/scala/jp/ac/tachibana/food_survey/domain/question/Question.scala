@@ -32,3 +32,4 @@ object Question:
     previousQuestionId: Question.Id,
     text: String,
     scaleText: Question.ScaleText)
+      extends Question

@@ -9,8 +9,8 @@ import jp.ac.tachibana.food_survey.http.HttpService
 import jp.ac.tachibana.food_survey.http.middleware.AuthenticationMiddleware
 import jp.ac.tachibana.food_survey.http.routes.{AuthenticationRoutes, SessionRoutes, UserRoutes}
 import jp.ac.tachibana.food_survey.persistence.DatabaseTransactor
-import jp.ac.tachibana.food_survey.persistence.auth.{PostgresAuthTokenRepository, PostgresCredentialsRepository}
-import jp.ac.tachibana.food_survey.persistence.session.{CachingPostgresSessionRepository, PostgresSessionRepository, PostgresSessionTemplateRepository}
+import jp.ac.tachibana.food_survey.persistence.auth.*
+import jp.ac.tachibana.food_survey.persistence.session.*
 import jp.ac.tachibana.food_survey.persistence.user.PostgresUserRepository
 import jp.ac.tachibana.food_survey.programs.session.{DefaultSessionListenerProgram, DefaultSessionProgram}
 import jp.ac.tachibana.food_survey.programs.user.DefaultUserProgram

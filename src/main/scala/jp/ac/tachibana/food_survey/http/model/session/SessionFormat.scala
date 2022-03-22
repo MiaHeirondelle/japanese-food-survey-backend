@@ -3,6 +3,7 @@ package jp.ac.tachibana.food_survey.http.model.session
 import io.circe.{Encoder, JsonObject}
 
 import jp.ac.tachibana.food_survey.domain.session.Session
+import jp.ac.tachibana.food_survey.http.model.question.QuestionAnswerFormat
 import jp.ac.tachibana.food_survey.http.model.user.UserFormat
 
 sealed abstract class SessionFormat(val status: SessionStatusFormat)
@@ -38,11 +39,14 @@ object SessionFormat:
           joined_users = joinedUsers.toList.map(UserFormat.fromDomain),
           admin = UserFormat.fromDomain(admin)
         )
-      case Session.InProgress(number, joinedUsers, admin, _, _, _) =>
+      case Session.InProgress(number, joinedUsers, admin, answers, currentElementNumber, template) =>
         SessionFormat.InProgress(
           number = number.value,
           joined_users = joinedUsers.toList.map(UserFormat.fromDomain),
-          admin = UserFormat.fromDomain(admin)
+          admin = UserFormat.fromDomain(admin),
+          answers = answers.toList.map(QuestionAnswerFormat.fromDomain),
+          current_element_number = currentElementNumber.value,
+          template = SessionTemplateFormat.fromDomain(template)
         )
     }
 
@@ -67,7 +71,10 @@ object SessionFormat:
   case class InProgress(
     number: Int,
     joined_users: List[UserFormat],
-    admin: UserFormat)
+    admin: UserFormat,
+    answers: List[QuestionAnswerFormat],
+    current_element_number: Int,
+    template: SessionTemplateFormat)
       extends SessionFormat(SessionStatusFormat.InProgress)
       derives Encoder.AsObject
 

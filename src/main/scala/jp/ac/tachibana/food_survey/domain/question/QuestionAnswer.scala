@@ -13,8 +13,26 @@ sealed trait QuestionAnswer:
 
 object QuestionAnswer:
 
-  opaque type ScaleValue = Byte
+  opaque type ScaleValue = Int
+
+  object ScaleValue:
+
+    val minValue: QuestionAnswer.ScaleValue = 1
+    val maxValue: QuestionAnswer.ScaleValue = 7
+    val range: Vector[QuestionAnswer.ScaleValue] =
+      (minValue.value to maxValue.value).toVector
+
+    extension (_value: QuestionAnswer.ScaleValue) def value: Int = _value
+
+    def apply(value: Int): QuestionAnswer.ScaleValue = value
+
   opaque type Comment = String
+
+  object Comment:
+
+    def apply(comment: String): QuestionAnswer.Comment = comment
+
+    extension (comment: QuestionAnswer.Comment) def value: String = comment
 
   case class Basic(
     sessionNumber: Session.Number,

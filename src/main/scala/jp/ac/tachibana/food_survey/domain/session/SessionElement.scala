@@ -5,7 +5,7 @@ import cats.instances.int.catsKernelStdOrderForInt
 
 import jp.ac.tachibana.food_survey.domain.question.Question as SessionQuestion
 
-trait SessionElement
+sealed trait SessionElement
 
 object SessionElement:
 

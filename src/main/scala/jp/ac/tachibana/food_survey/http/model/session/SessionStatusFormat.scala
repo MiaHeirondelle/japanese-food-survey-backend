@@ -7,7 +7,7 @@ enum SessionStatusFormat:
 
 object SessionStatusFormat:
 
-  implicit val sessionStatusEncoder: Encoder[SessionStatusFormat] =
+  implicit val encoder: Encoder[SessionStatusFormat] =
     Encoder.encodeString.contramap {
       case SessionStatusFormat.NotCreated =>
         "not_created"

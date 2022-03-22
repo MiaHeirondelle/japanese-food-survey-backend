@@ -73,7 +73,7 @@ object Session:
     joinedUsers: NonEmptyList[User.Respondent],
     admin: User.Admin,
     answers: Vector[QuestionAnswer],
-    currentElement: SessionElement.Number,
+    currentElementNumber: SessionElement.Number,
     template: SessionTemplate)
       extends Session.NotFinished:
     val status: Session.Status = Session.Status.InProgress
@@ -88,7 +88,7 @@ object Session:
         session.joinedUsers,
         session.admin,
         answers = Vector.empty,
-        currentElement = SessionElement.Number.zero,
+        currentElementNumber = SessionElement.Number.zero,
         template
       )
 

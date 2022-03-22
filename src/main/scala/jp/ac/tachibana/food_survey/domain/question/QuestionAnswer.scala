@@ -17,8 +17,8 @@ object QuestionAnswer:
 
   object ScaleValue:
 
-    val minValue: QuestionAnswer.ScaleValue = 1
-    val maxValue: QuestionAnswer.ScaleValue = 7
+    val minValue: QuestionAnswer.ScaleValue = 0
+    val maxValue: QuestionAnswer.ScaleValue = 5
     val range: Vector[QuestionAnswer.ScaleValue] =
       (minValue.value to maxValue.value).toVector
 

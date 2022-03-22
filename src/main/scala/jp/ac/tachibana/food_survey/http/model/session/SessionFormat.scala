@@ -39,13 +39,13 @@ object SessionFormat:
           joined_users = joinedUsers.toList.map(UserFormat.fromDomain),
           admin = UserFormat.fromDomain(admin)
         )
-      case Session.InProgress(number, joinedUsers, admin, answers, currentElement, template) =>
+      case Session.InProgress(number, joinedUsers, admin, answers, currentElementNumber, template) =>
         SessionFormat.InProgress(
           number = number.value,
           joined_users = joinedUsers.toList.map(UserFormat.fromDomain),
           admin = UserFormat.fromDomain(admin),
           answers = answers.toList.map(QuestionAnswerFormat.fromDomain),
-          current_element = currentElement.value,
+          current_element_number = currentElementNumber.value,
           template = SessionTemplateFormat.fromDomain(template)
         )
     }
@@ -73,7 +73,7 @@ object SessionFormat:
     joined_users: List[UserFormat],
     admin: UserFormat,
     answers: List[QuestionAnswerFormat],
-    current_element: Int,
+    current_element_number: Int,
     template: SessionTemplateFormat)
       extends SessionFormat(SessionStatusFormat.InProgress)
       derives Encoder.AsObject

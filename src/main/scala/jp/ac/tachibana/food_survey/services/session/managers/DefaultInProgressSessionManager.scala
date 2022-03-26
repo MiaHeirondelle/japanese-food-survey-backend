@@ -1,7 +1,7 @@
 package jp.ac.tachibana.food_survey.services.session.managers
 
 import cats.Functor
-import cats.effect.Ref
+import cats.effect.{Ref, Sync}
 import cats.syntax.either.*
 import cats.syntax.functor.*
 import cats.syntax.option.*
@@ -65,6 +65,9 @@ class DefaultInProgressSessionManager[F[_]: Functor] private (ref: Ref[F, Option
     ref.modify(stateOpt => stateOpt.fold((stateOpt, InProgressSessionManager.Error.IncorrectSessionState.asLeft[A]))(f))
 
 object DefaultInProgressSessionManager:
+
+  def create[F[_]: Sync]: F[InProgressSessionManager[F]] =
+    Ref.of[F, Option[DefaultInProgressSessionManager.InternalState]](None).map(new DefaultInProgressSessionManager(_))
 
   private type OperationResult[A] =
     Either[InProgressSessionManager.Error, A]

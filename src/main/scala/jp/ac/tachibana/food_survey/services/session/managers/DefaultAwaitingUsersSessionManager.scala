@@ -2,7 +2,7 @@ package jp.ac.tachibana.food_survey.services.session.managers
 
 import cats.Functor
 import cats.data.{NonEmptyList, OptionT}
-import cats.effect.Ref
+import cats.effect.{Ref, Sync}
 import cats.syntax.either.*
 import cats.syntax.eq.*
 import cats.syntax.functor.*
@@ -62,3 +62,6 @@ object DefaultAwaitingUsersSessionManager:
 
   private type StateTransformationResult[A] =
     (Option[Session.NotBegan], OperationResult[A])
+
+  def create[F[_]: Sync]: F[AwaitingUsersSessionManager[F]] =
+    Ref.of[F, Option[Session.NotBegan]](None).map(new DefaultAwaitingUsersSessionManager(_))

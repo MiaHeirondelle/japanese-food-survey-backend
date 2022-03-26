@@ -126,4 +126,4 @@ class DefaultSessionService[F[_]: Monad](
   override def finish: F[Either[SessionService.FinishSessionError, Session.Finished]] = ???
 
   override def stop: F[Unit] =
-    sessionRepository.reset
+    inProgressSessionManager.unregisterSession >> awaitingUsersSessionManager.unregisterSession >> sessionRepository.reset

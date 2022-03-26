@@ -113,6 +113,7 @@ object Session:
         template
       )
 
+  // todo: template snapshot?
   case class Finished(
     number: Session.Number,
     joinedUsers: NonEmptyList[User.Respondent],

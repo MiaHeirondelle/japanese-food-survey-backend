@@ -15,7 +15,8 @@ import jp.ac.tachibana.food_survey.services.session.managers.DefaultInProgressSe
 class DefaultInProgressSessionManager[F[_]: Functor] private (ref: Ref[F, Option[DefaultInProgressSessionManager.InternalState]])
     extends InProgressSessionManager[F]:
 
-  override def registerSession(session: Session.InProgress): F[Unit] =
+  // todo: prevent registering if already registered
+  override private[managers] def registerSession(session: Session.InProgress): F[Unit] =
     ref.set(Some(DefaultInProgressSessionManager.InternalState(usersReadyToTransition = 0, session)))
 
   override def getCurrentState: F[Option[SessionService.SessionElementState]] =
@@ -56,7 +57,7 @@ class DefaultInProgressSessionManager[F[_]: Functor] private (ref: Ref[F, Option
         )
       })
 
-  override def unregisterSession: F[Unit] =
+  override private[managers] def unregisterSession: F[Unit] =
     ref.set(None)
 
   private def modifyNonEmpty[A](

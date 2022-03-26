@@ -15,7 +15,8 @@ import jp.ac.tachibana.food_survey.services.session.SessionService
 class DefaultAwaitingUsersSessionManager[F[_]: Functor](ref: Ref[F, Option[Session.NotBegan]])
     extends AwaitingUsersSessionManager[F]:
 
-  override def registerSession(session: Session.AwaitingUsers): F[Unit] =
+  // todo: prevent registering if already registered
+  override private[managers] def registerSession(session: Session.AwaitingUsers): F[Unit] =
     ref.set(session.some)
 
   override def getCurrentState: F[Option[Session.NotBegan]] =
@@ -47,7 +48,7 @@ class DefaultAwaitingUsersSessionManager[F[_]: Functor](ref: Ref[F, Option[Sessi
         (s.some, AwaitingUsersSessionManager.Error.InvalidSessionState.asLeft)
     }
 
-  override def unregisterSession: F[Unit] =
+  override private[managers] def unregisterSession: F[Unit] =
     ref.set(none)
 
   private def modifyNonEmpty[A](

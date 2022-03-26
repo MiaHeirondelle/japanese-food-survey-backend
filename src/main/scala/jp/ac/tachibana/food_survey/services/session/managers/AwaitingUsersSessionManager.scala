@@ -5,13 +5,13 @@ import jp.ac.tachibana.food_survey.domain.user.User
 
 trait AwaitingUsersSessionManager[F[_]]:
 
-  def registerSession(session: Session.AwaitingUsers): F[Unit]
+  private[managers] def registerSession(session: Session.AwaitingUsers): F[Unit]
 
   def join(respondent: User.Respondent): F[Either[AwaitingUsersSessionManager.Error, Session.NotBegan]]
 
   def getCurrentState: F[Option[Session.NotBegan]]
 
-  def unregisterSession: F[Unit]
+  private[managers] def unregisterSession: F[Unit]
 
 object AwaitingUsersSessionManager:
 

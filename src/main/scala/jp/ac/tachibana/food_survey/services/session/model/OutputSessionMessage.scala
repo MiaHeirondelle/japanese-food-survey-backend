@@ -8,7 +8,7 @@ sealed trait OutputSessionMessage
 object OutputSessionMessage:
   case class UserJoined(
     user: User,
-    session: Session.NotFinished)
+    session: Session)
       extends OutputSessionMessage
 
   case class SessionBegan(session: Session.InProgress) extends OutputSessionMessage

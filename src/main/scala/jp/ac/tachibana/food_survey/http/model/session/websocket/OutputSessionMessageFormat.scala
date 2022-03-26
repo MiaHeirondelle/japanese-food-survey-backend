@@ -43,14 +43,14 @@ object OutputSessionMessageFormat:
         jsonToSocketFrame(
           OutputSessionMessageFormat.UserJoined(
             UserFormat.fromDomain(user),
-            SessionFormat.fromDomainNotFinished(session)
+            SessionFormat.fromDomain(session)
           )
         )
 
       case OutputSessionMessage.SessionBegan(session) =>
         jsonToSocketFrame(
           OutputSessionMessageFormat.SessionBegan(
-            SessionFormat.fromDomainNotFinished(session)
+            SessionFormat.fromDomain(session)
           ))
 
       case OutputSessionMessage.Shutdown =>

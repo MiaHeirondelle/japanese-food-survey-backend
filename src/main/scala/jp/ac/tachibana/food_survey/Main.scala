@@ -15,7 +15,7 @@ import jp.ac.tachibana.food_survey.persistence.user.PostgresUserRepository
 import jp.ac.tachibana.food_survey.programs.session.{DefaultSessionListenerProgram, DefaultSessionProgram}
 import jp.ac.tachibana.food_survey.programs.user.DefaultUserProgram
 import jp.ac.tachibana.food_survey.services.auth.DefaultAuthenticationService
-import jp.ac.tachibana.food_survey.services.session.managers.{DefaultAwaitingUsersSessionManager, DefaultInProgressSessionManager}
+import jp.ac.tachibana.food_survey.services.session.managers.{DefaultAwaitingUsersSessionManager, DefaultCurrentSessionStateManager, DefaultInProgressSessionManager}
 import jp.ac.tachibana.food_survey.services.session.{DefaultSessionListenerService, DefaultSessionService}
 import jp.ac.tachibana.food_survey.services.user.DefaultUserService
 
@@ -36,15 +36,19 @@ object Main extends IOApp.Simple:
         for {
           awaitingUsersSessionManager <- DefaultAwaitingUsersSessionManager.create[IO]
           inProgressSessionManager <- DefaultInProgressSessionManager.create[IO]
+          currentSessionStateManager = new DefaultCurrentSessionStateManager[IO](
+            sessionRepository,
+            awaitingUsersSessionManager,
+            inProgressSessionManager)
           authenticationService <- DefaultAuthenticationService
             .create[IO](authTokenRepository, credentialsRepository, userRepository)
           sessionService = new DefaultSessionService[IO](
-            sessionRepository,
             sessionTemplateRepository,
             userRepository,
+            currentSessionStateManager,
             awaitingUsersSessionManager,
             inProgressSessionManager)
-          sessionListenerService <- DefaultSessionListenerService.create[IO](sessionRepository)
+          sessionListenerService <- DefaultSessionListenerService.create[IO](currentSessionStateManager)
           authenticationMiddleware =
             new AuthenticationMiddleware[IO](
               appConfig.http.authentication,

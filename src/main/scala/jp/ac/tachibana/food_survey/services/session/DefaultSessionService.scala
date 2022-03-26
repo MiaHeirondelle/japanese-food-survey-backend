@@ -1,6 +1,5 @@
 package jp.ac.tachibana.food_survey.services.session
 
-import cats.Monad
 import cats.data.{EitherT, NonEmptyList, OptionT}
 import cats.syntax.applicative.*
 import cats.syntax.either.*
@@ -8,6 +7,8 @@ import cats.syntax.eq.*
 import cats.syntax.flatMap.*
 import cats.syntax.functor.*
 import cats.syntax.option.*
+import cats.syntax.traverse.*
+import cats.{Applicative, Monad}
 
 import jp.ac.tachibana.food_survey.domain.question.QuestionAnswer
 import jp.ac.tachibana.food_survey.domain.session.Session
@@ -15,12 +16,12 @@ import jp.ac.tachibana.food_survey.domain.user.User
 import jp.ac.tachibana.food_survey.persistence.session.{SessionRepository, SessionTemplateRepository}
 import jp.ac.tachibana.food_survey.persistence.user.UserRepository
 import jp.ac.tachibana.food_survey.services.session.managers.InProgressSessionManager.Error
-import jp.ac.tachibana.food_survey.services.session.managers.{AwaitingUsersSessionManager, InProgressSessionManager}
+import jp.ac.tachibana.food_survey.services.session.managers.{AwaitingUsersSessionManager, CurrentSessionStateManager, InProgressSessionManager}
 
 class DefaultSessionService[F[_]: Monad](
-  sessionRepository: SessionRepository[F],
   sessionTemplateRepository: SessionTemplateRepository[F],
   userRepository: UserRepository[F],
+  currentSessionStateManager: CurrentSessionStateManager[F],
   awaitingUsersSessionManager: AwaitingUsersSessionManager[F],
   inProgressSessionManager: InProgressSessionManager[F])
     extends SessionService[F]:
@@ -28,17 +29,12 @@ class DefaultSessionService[F[_]: Monad](
   // todo: current session state (cached)
 
   override def getActiveSession: F[Option[Session.NotFinished]] =
-    OptionT(inProgressSessionManager.getCurrentState)
-      .subflatMap {
-        case s: SessionService.SessionElementState.Finished =>
-          none
-
-        case s: SessionService.SessionElementState.Question =>
-          s.session.some
-      }
-      .orElseF(awaitingUsersSessionManager.getCurrentState.widen)
-      .orElseF(sessionRepository.getActiveSession.widen)
-      .value
+    OptionT(currentSessionStateManager.getCurrentSession).subflatMap {
+      case s: Session.Finished =>
+        none
+      case s: Session.NotFinished =>
+        s.some
+    }.value
 
   override def create(
     creator: User.Admin,
@@ -56,7 +52,7 @@ class DefaultSessionService[F[_]: Monad](
             result <- respondentsOpt match {
               case Some(respondents) =>
                 for {
-                  sessionNumberOpt <- sessionRepository.getLatestSessionNumber
+                  sessionNumberOpt <- currentSessionStateManager.getLatestSessionNumber
                   sessionNumber = sessionNumberOpt.fold(Session.Number.zero)(_.increment)
                   session = Session.AwaitingUsers(
                     number = sessionNumber,
@@ -64,8 +60,7 @@ class DefaultSessionService[F[_]: Monad](
                     waitingForUsers = respondents,
                     admin = creator
                   )
-                  _ <- sessionRepository.createNewSession(session)
-                  _ <- awaitingUsersSessionManager.registerSession(session)
+                  _ <- currentSessionStateManager.createNewSession(session)
                 } yield session.asRight[SessionService.CreateSessionError]
               case None =>
                 SessionService.CreateSessionError.InvalidParticipants
@@ -82,14 +77,16 @@ class DefaultSessionService[F[_]: Monad](
     } yield result
 
   override def join(respondent: User.Respondent): F[Either[SessionService.JoinSessionError, Session.NotBegan]] =
-    awaitingUsersSessionManager
-      .join(respondent)
-      .map(_.leftMap {
-        case AwaitingUsersSessionManager.Error.InvalidSessionState =>
-          SessionService.JoinSessionError.WrongSessionStatus
-        case AwaitingUsersSessionManager.Error.InvalidParticipant =>
-          SessionService.JoinSessionError.InvalidParticipant
-      })
+    // A refresh may be necessary if the session is re-created from persisted data.
+    currentSessionStateManager.refreshAwaitingUsersSessionManager >>
+      awaitingUsersSessionManager
+        .join(respondent)
+        .map(_.leftMap {
+          case AwaitingUsersSessionManager.Error.InvalidSessionState =>
+            SessionService.JoinSessionError.WrongSessionStatus
+          case AwaitingUsersSessionManager.Error.InvalidParticipant =>
+            SessionService.JoinSessionError.InvalidParticipant
+        })
 
   override def begin(admin: User.Admin): F[Either[SessionService.BeginSessionError, Session.InProgress]] =
     // todo: check admin the same as creator?
@@ -99,8 +96,7 @@ class DefaultSessionService[F[_]: Monad](
           for {
             template <- sessionTemplateRepository.getActiveTemplate
             newSession = Session.InProgress.fromTemplate(s, template)
-            _ <- inProgressSessionManager.registerSession(newSession)
-            _ <- awaitingUsersSessionManager.unregisterSession
+            _ <- currentSessionStateManager.registerInProgressSession(newSession)
           } yield newSession.asRight[SessionService.BeginSessionError]
 
         case _ =>
@@ -126,4 +122,4 @@ class DefaultSessionService[F[_]: Monad](
   override def finish: F[Either[SessionService.FinishSessionError, Session.Finished]] = ???
 
   override def stop: F[Unit] =
-    inProgressSessionManager.unregisterSession >> awaitingUsersSessionManager.unregisterSession >> sessionRepository.reset
+    currentSessionStateManager.reset

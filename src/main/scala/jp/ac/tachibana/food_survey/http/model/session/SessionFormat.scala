@@ -20,6 +20,8 @@ object SessionFormat:
           Encoder.AsObject[SessionFormat.CanBegin].encodeObject(cb)
         case ip: SessionFormat.InProgress =>
           Encoder.AsObject[SessionFormat.InProgress].encodeObject(ip)
+        case f: SessionFormat.Finished =>
+          Encoder.AsObject[SessionFormat.Finished].encodeObject(f)
       }
       base.add("status", Encoder[SessionStatusFormat].apply(r.status))
     }
@@ -50,6 +52,20 @@ object SessionFormat:
         )
     }
 
+  def fromDomain(session: Session): SessionFormat =
+    session match {
+      case s: Session.NotFinished =>
+        fromDomainNotFinished(s)
+
+      case Session.Finished(number, joinedUsers, admin, answers) =>
+        SessionFormat.Finished(
+          number = number.value,
+          joined_users = joinedUsers.toList.map(UserFormat.fromDomain),
+          admin = UserFormat.fromDomain(admin),
+          answers = SessionAnswersFormat.fromDomain(answers)
+        )
+    }
+
   def fromDomainNotFinishedOpt(domainOpt: Option[Session.NotFinished]): SessionFormat =
     domainOpt.fold(SessionFormat.NotCreated)(fromDomainNotFinished)
 
@@ -75,6 +91,14 @@ object SessionFormat:
     answers: SessionAnswersFormat.RawType,
     current_element_number: Int,
     template: SessionTemplateFormat)
+      extends SessionFormat(SessionStatusFormat.InProgress)
+      derives Encoder.AsObject
+
+  case class Finished(
+    number: Int,
+    joined_users: List[UserFormat],
+    admin: UserFormat,
+    answers: SessionAnswersFormat.RawType)
       extends SessionFormat(SessionStatusFormat.InProgress)
       derives Encoder.AsObject
 

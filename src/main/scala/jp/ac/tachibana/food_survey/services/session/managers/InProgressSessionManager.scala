@@ -6,7 +6,7 @@ import jp.ac.tachibana.food_survey.services.session.SessionService
 
 trait InProgressSessionManager[F[_]]:
 
-  def registerSession(session: Session.InProgress): F[Unit]
+  private[managers] def registerSession(session: Session.InProgress): F[Unit]
 
   def getCurrentState: F[Option[SessionService.SessionElementState]]
 
@@ -18,7 +18,7 @@ trait InProgressSessionManager[F[_]]:
     */
   def transitionToNextElement: F[Either[InProgressSessionManager.Error, Option[SessionService.SessionElementState]]]
 
-  def unregisterSession: F[Unit]
+  private[managers] def unregisterSession: F[Unit]
 
 object InProgressSessionManager:
 

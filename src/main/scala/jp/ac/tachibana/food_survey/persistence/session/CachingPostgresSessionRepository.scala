@@ -7,7 +7,9 @@ import cats.syntax.applicative.*
 import cats.syntax.eq.*
 import cats.syntax.flatMap.*
 import cats.syntax.functor.*
+import cats.syntax.option.*
 import cats.syntax.order.*
+import cats.syntax.traverse.*
 import cats.{Applicative, Monad}
 import doobie.Transactor
 
@@ -31,35 +33,63 @@ class CachingPostgresSessionRepository[F[_]: Monad](
     } yield session
 
   override def createNewSession(session: Session.AwaitingUsers): F[Unit] =
-    underlying.createNewSession(session) >> updateCache(session)
+    underlying.createNewSession(session) >> setCache(session)
 
-  override def updateSession(session: Session): F[Unit] =
+  override def setActiveSession(session: Session): F[Unit] =
     session match {
       case s: Session.AwaitingUsers =>
-        underlying.updateSession(s) >> updateCacheToLatest(s)
+        underlying.setActiveSession(s) >> setCacheToLatest(s)
       case s: Session.CanBegin =>
-        updateCacheToLatest(s)
+        setCacheToLatest(s)
       case s: Session.InProgress =>
-        updateCacheToLatest(s)
+        setCacheToLatest(s)
       case s: Session.Finished =>
         for {
-          _ <- underlying.updateSession(s)
+          _ <- underlying.setActiveSession(s)
           cachedSessionOpt <- activeSessionCache.get
           result <- resetCache.whenA(cachedSessionOpt.exists(_.number === s.number))
         } yield result
     }
 
+  override def updateInProgressSession(
+    update: Session.InProgress => Session.InProgressOrFinished): F[Option[Session.InProgressOrFinished]] =
+    for {
+      _ <- getActiveSession // toggle cache refresh if it's empty
+      session <- updateCache(update)
+      _ <- session match {
+        case Some(s: Session.Finished) =>
+          underlying.setActiveSession(s)
+        case Some(s: Session.InProgress) =>
+          Applicative[F].unit
+        case None =>
+          Applicative[F].unit
+      }
+    } yield session
+
   override def reset: F[Unit] =
     underlying.reset >> resetCache
 
-  private def updateCacheToLatest(session: Session.NotFinished): F[Unit] =
+  private def setCacheToLatest(session: Session.NotFinished): F[Unit] =
     for {
       cachedSession <- activeSessionCache.get
-      result <- if (cachedSession.exists(_.number <= session.number)) updateCache(session) else Applicative[F].unit
+      result <- if (cachedSession.exists(_.number <= session.number)) setCache(session) else Applicative[F].unit
     } yield result
 
-  private def updateCache(session: Session.NotFinished): F[Unit] =
+  private def setCache(session: Session.NotFinished): F[Unit] =
     activeSessionCache.set(Some(session)).void
+
+  private def updateCache(update: Session.InProgress => Session.InProgressOrFinished): F[Option[Session.InProgressOrFinished]] =
+    activeSessionCache.modify(_.fold[(Option[Session.NotFinished], Option[Session.InProgressOrFinished])]((None, None)) {
+      case s: Session.AwaitingUsers => (Some(s), None)
+      case s: Session.CanBegin      => (Some(s), None)
+      case s: Session.InProgress =>
+        update(s) match {
+          case us: Session.InProgress =>
+            (Some(us), Some(us))
+          case us: Session.Finished =>
+            (None, Some(us))
+        }
+    })
 
   private def resetCache: F[Unit] =
     activeSessionCache.set(None)

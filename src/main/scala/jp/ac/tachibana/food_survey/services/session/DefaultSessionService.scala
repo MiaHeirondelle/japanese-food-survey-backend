@@ -8,6 +8,7 @@ import cats.syntax.eq.*
 import cats.syntax.flatMap.*
 import cats.syntax.functor.*
 
+import jp.ac.tachibana.food_survey.domain.question.QuestionAnswer
 import jp.ac.tachibana.food_survey.domain.session.Session
 import jp.ac.tachibana.food_survey.domain.user.User
 import jp.ac.tachibana.food_survey.persistence.session.{SessionRepository, SessionTemplateRepository}
@@ -86,7 +87,7 @@ class DefaultSessionService[F[_]: Monad](
             }
 
           sessionRepository
-            .updateSession(updatedSession)
+            .setActiveSession(updatedSession)
             .as(updatedSession.asRight[SessionService.SessionJoinError])
 
         case _ =>
@@ -102,7 +103,7 @@ class DefaultSessionService[F[_]: Monad](
           for {
             template <- sessionTemplateRepository.getActiveTemplate
             session = Session.InProgress.fromTemplate(s, template)
-            _ <- sessionRepository.updateSession(session)
+            _ <- sessionRepository.setActiveSession(session)
           } yield session.asRight[SessionService.SessionBeginError]
 
         case _ =>
@@ -110,7 +111,8 @@ class DefaultSessionService[F[_]: Monad](
       }
       .getOrElse(SessionService.SessionBeginError.WrongSessionStatus.asLeft[Session.InProgress])
 
-  override def update: F[Either[SessionService.SessionUpdateError, Session.InProgress]] = ???
+  override def provideAnswer(answer: QuestionAnswer): F[Either[SessionService.ProvideAnswerError, Session.InProgressOrFinished]] =
+    ???
 
   override def finish: F[Either[SessionService.SessionFinishError, Session.Finished]] = ???
 

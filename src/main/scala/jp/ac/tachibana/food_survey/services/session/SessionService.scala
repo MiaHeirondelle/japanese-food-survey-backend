@@ -2,6 +2,7 @@ package jp.ac.tachibana.food_survey.services.session
 
 import cats.data.NonEmptyList
 
+import jp.ac.tachibana.food_survey.domain.question.QuestionAnswer
 import jp.ac.tachibana.food_survey.domain.session.Session
 import jp.ac.tachibana.food_survey.domain.user.User
 
@@ -17,7 +18,8 @@ trait SessionService[F[_]]:
 
   def begin(admin: User.Admin): F[Either[SessionService.SessionBeginError, Session.InProgress]]
 
-  def update: F[Either[SessionService.SessionUpdateError, Session.InProgress]]
+  // todo: wrong answer error
+  def provideAnswer(answer: QuestionAnswer): F[Either[SessionService.ProvideAnswerError, Session.InProgressOrFinished]]
 
   def finish: F[Either[SessionService.SessionFinishError, Session.Finished]]
 
@@ -43,10 +45,10 @@ object SessionService:
   object SessionBeginError:
     case object WrongSessionStatus extends SessionBeginError
 
-  sealed trait SessionUpdateError
+  sealed trait ProvideAnswerError
 
-  object SessionUpdateError:
-    case object WrongSessionStatus extends SessionUpdateError
+  object ProvideAnswer:
+    case object WrongSessionStatus extends ProvideAnswerError
 
   sealed trait SessionFinishError
 

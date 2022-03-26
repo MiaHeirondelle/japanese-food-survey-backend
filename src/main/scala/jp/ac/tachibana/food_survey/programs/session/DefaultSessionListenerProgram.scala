@@ -38,4 +38,6 @@ class DefaultSessionListenerProgram[F[_]: Monad](
           beganSession <- OptionT(sessionService.begin(session.admin).map(_.toOption))
         } yield OutputSessionMessage.SessionBegan(beganSession): OutputSessionMessage
         beginF.value
+      case InputSessionMessage.ReadyForNextQuestion =>
+        ???
     }

@@ -5,6 +5,7 @@ import cats.effect.{Async, Ref, Sync}
 import cats.syntax.applicative.*
 import cats.syntax.flatMap.*
 import cats.syntax.functor.*
+import cats.syntax.option.*
 import cats.syntax.traverse.*
 import doobie.*
 import doobie.implicits.*
@@ -80,7 +81,7 @@ class PostgresSessionRepository[F[_]: Async](implicit tr: Transactor[F]) extends
     Update[(Session.Number, User.Id)]("""INSERT INTO "survey_session_participant" (session_number, user_id) VALUES (?, ?)""")
       .updateMany(data)
 
-  override def updateSession(session: Session): F[Unit] =
+  override def setActiveSession(session: Session): F[Unit] =
     val encoded = SessionPostgresFormat.fromDomain(session)
     val encodedState = encoded.asStateJson
     sql"""UPDATE "survey_session" SET
@@ -91,6 +92,11 @@ class PostgresSessionRepository[F[_]: Async](implicit tr: Transactor[F]) extends
         """.stripMargin.update.run
       .transact(tr)
       .void
+
+  // todo: comment no-op
+  override def updateInProgressSession(
+    update: Session.InProgress => Session.InProgressOrFinished): F[Option[Session.InProgressOrFinished]] =
+    none[Session.InProgressOrFinished].pure[F]
 
   override def reset: F[Unit] =
     val query = for {

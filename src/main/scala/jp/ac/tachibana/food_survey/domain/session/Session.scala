@@ -52,6 +52,7 @@ object Session:
 
   sealed trait NotFinished extends Session
   sealed trait NotBegan extends Session with Session.NotFinished
+  sealed trait InProgressOrFinished extends Session
 
   case class AwaitingUsers(
     number: Session.Number,
@@ -72,10 +73,11 @@ object Session:
     number: Session.Number,
     joinedUsers: NonEmptyList[User.Respondent],
     admin: User.Admin,
+    // todo: refactor to an answers container (map [QuestionId, NonEmptyMap[UserId, Answer]?])
     answers: Vector[QuestionAnswer],
     currentElementNumber: SessionElement.Number,
     template: SessionTemplate)
-      extends Session.NotFinished:
+      extends Session.NotFinished with Session.InProgressOrFinished:
     val status: Session.Status = Session.Status.InProgress
 
   object InProgress:
@@ -97,5 +99,5 @@ object Session:
     joinedUsers: NonEmptyList[User.Respondent],
     admin: User.Admin,
     answers: NonEmptyList[QuestionAnswer])
-      extends Session:
+      extends Session.InProgressOrFinished:
     val status: Session.Status = Session.Status.Finished

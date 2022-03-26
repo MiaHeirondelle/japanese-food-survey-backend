@@ -1,0 +1,28 @@
+package jp.ac.tachibana.food_survey.domain.session
+
+import cats.data.NonEmptyMap
+import cats.syntax.eq.*
+
+import jp.ac.tachibana.food_survey.domain.question.{Question, QuestionAnswer}
+import jp.ac.tachibana.food_survey.domain.user.User
+
+class SessionAnswers private (
+  respondentsCount: Int,
+  answers: Map[Question.Id, NonEmptyMap[User.Id, QuestionAnswer]]) {
+
+  def withAnswer(answer: QuestionAnswer): SessionAnswers =
+    new SessionAnswers(
+      respondentsCount,
+      answers.updated(
+        answer.questionId,
+        answers.get(answer.questionId).fold(NonEmptyMap.one(answer.respondentId, answer))(_.add(answer.respondentId -> answer))))
+
+  def questionAnswered(questionId: Question.Id): Boolean =
+    answers.get(questionId).exists(_.length === respondentsCount)
+}
+
+object SessionAnswers {
+
+  def apply(respondentsCount: Int): SessionAnswers =
+    new SessionAnswers(respondentsCount, Map.empty)
+}

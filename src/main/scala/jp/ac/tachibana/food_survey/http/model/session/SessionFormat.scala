@@ -44,7 +44,7 @@ object SessionFormat:
           number = number.value,
           joined_users = joinedUsers.toList.map(UserFormat.fromDomain),
           admin = UserFormat.fromDomain(admin),
-          answers = answers.toList.map(QuestionAnswerFormat.fromDomain),
+          answers = SessionAnswersFormat.fromDomain(answers),
           current_element_number = currentElementNumber.value,
           template = SessionTemplateFormat.fromDomain(template)
         )
@@ -72,7 +72,7 @@ object SessionFormat:
     number: Int,
     joined_users: List[UserFormat],
     admin: UserFormat,
-    answers: List[QuestionAnswerFormat],
+    answers: SessionAnswersFormat.RawType,
     current_element_number: Int,
     template: SessionTemplateFormat)
       extends SessionFormat(SessionStatusFormat.InProgress)

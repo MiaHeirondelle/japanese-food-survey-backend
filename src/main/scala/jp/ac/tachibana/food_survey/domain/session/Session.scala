@@ -2,9 +2,10 @@ package jp.ac.tachibana.food_survey.domain.session
 
 import cats.data.NonEmptyList
 import cats.instances.int.*
+import cats.syntax.order.*
 import cats.{Eq, Order}
 
-import jp.ac.tachibana.food_survey.domain.question.QuestionAnswer
+import jp.ac.tachibana.food_survey.domain.question.{Question, QuestionAnswer}
 import jp.ac.tachibana.food_survey.domain.user.User
 
 sealed abstract class Session:
@@ -50,9 +51,23 @@ object Session:
           admin :: joinedUsers
       }
 
+    def activeRespondents: List[User.Respondent] =
+      session match {
+        case AwaitingUsers(_, joinedUsers, _, _) =>
+          joinedUsers
+        case CanBegin(_, joinedUsers, _) =>
+          joinedUsers.toList
+        case InProgress(_, joinedUsers, _, _, _, _) =>
+          joinedUsers.toList
+        case Finished(_, joinedUsers, _, _) =>
+          Nil
+      }
+
   sealed trait NotFinished extends Session
   sealed trait NotBegan extends Session with Session.NotFinished
+  sealed trait InProgressOrFinished extends Session
 
+  // todo: make sealed abstract classes
   case class AwaitingUsers(
     number: Session.Number,
     joinedUsers: List[User.Respondent],
@@ -72,13 +87,30 @@ object Session:
     number: Session.Number,
     joinedUsers: NonEmptyList[User.Respondent],
     admin: User.Admin,
-    answers: Vector[QuestionAnswer],
+    answers: SessionAnswers,
     currentElementNumber: SessionElement.Number,
     template: SessionTemplate)
-      extends Session.NotFinished:
+      extends Session.NotFinished with Session.InProgressOrFinished:
     val status: Session.Status = Session.Status.InProgress
 
   object InProgress:
+
+    extension (session: Session.InProgress)
+      def currentElement: Option[SessionElement] =
+        session.template.element(session.currentElementNumber)
+
+      def answersCount(questionId: Question.Id) =
+        session.answers.answersCount(questionId)
+
+      def isQuestionAnswered(questionId: Question.Id) =
+        session.answers.isQuestionAnswered(questionId)
+
+      def incrementCurrentElementNumber: Option[Session.InProgress] =
+        Option.when(session.currentElementNumber >= session.template.elementNumberLimit)(
+          session.copy(currentElementNumber = session.currentElementNumber.increment))
+
+      def provideAnswer(answer: QuestionAnswer): Session.InProgress =
+        session.copy(answers = session.answers.provideAnswer(answer))
 
     def fromTemplate(
       session: Session.CanBegin,
@@ -87,7 +119,7 @@ object Session:
         session.number,
         session.joinedUsers,
         session.admin,
-        answers = Vector.empty,
+        answers = SessionAnswers(respondentsCount = session.joinedUsers.size),
         currentElementNumber = SessionElement.Number.zero,
         template
       )
@@ -96,6 +128,6 @@ object Session:
     number: Session.Number,
     joinedUsers: NonEmptyList[User.Respondent],
     admin: User.Admin,
-    answers: NonEmptyList[QuestionAnswer])
-      extends Session:
+    answers: SessionAnswers)
+      extends Session.InProgressOrFinished:
     val status: Session.Status = Session.Status.Finished

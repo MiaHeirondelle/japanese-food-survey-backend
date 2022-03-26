@@ -12,7 +12,10 @@ trait SessionRepository[F[_]]:
   def createNewSession(session: Session.AwaitingUsers): F[Unit]
 
   // todo: no active session error
-  def updateSession(session: Session): F[Unit]
+  def setActiveSession(session: Session): F[Unit]
+
+  // todo: no active session error
+  def updateInProgressSession(update: Session.InProgress => Session.InProgressOrFinished): F[Option[Session.InProgressOrFinished]]
 
   // todo: remove
   def reset: F[Unit]

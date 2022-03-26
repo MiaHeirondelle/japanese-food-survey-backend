@@ -51,18 +51,6 @@ object Session:
           admin :: joinedUsers
       }
 
-    def activeRespondents: List[User.Respondent] =
-      session match {
-        case AwaitingUsers(_, joinedUsers, _, _) =>
-          joinedUsers
-        case CanBegin(_, joinedUsers, _) =>
-          joinedUsers.toList
-        case InProgress(_, joinedUsers, _, _, _, _) =>
-          joinedUsers.toList
-        case Finished(_, joinedUsers, _, _) =>
-          Nil
-      }
-
   sealed trait NotFinished extends Session
   sealed trait NotBegan extends Session with Session.NotFinished
   sealed trait InProgressOrFinished extends Session

@@ -8,7 +8,7 @@ import jp.ac.tachibana.food_survey.domain.user.User
 
 class SessionAnswers private (
   respondentsCount: Int,
-  answers: Map[Question.Id, NonEmptyMap[User.Id, QuestionAnswer]]) {
+  answers: Map[Question.Id, NonEmptyMap[User.Id, QuestionAnswer]]):
 
   def provideAnswer(answer: QuestionAnswer): SessionAnswers =
     new SessionAnswers(
@@ -30,10 +30,8 @@ class SessionAnswers private (
 
   def toMap: Map[Question.Id, NonEmptyMap[User.Id, QuestionAnswer]] =
     answers
-}
 
-object SessionAnswers {
+object SessionAnswers:
 
   def apply(respondentsCount: Int): SessionAnswers =
     new SessionAnswers(respondentsCount, Map.empty)
-}

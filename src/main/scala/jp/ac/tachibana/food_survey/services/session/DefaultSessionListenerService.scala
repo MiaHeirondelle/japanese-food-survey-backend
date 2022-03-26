@@ -14,21 +14,23 @@ import jp.ac.tachibana.food_survey.domain.user.User
 import jp.ac.tachibana.food_survey.domain.user.User.Id
 import jp.ac.tachibana.food_survey.persistence.session.SessionRepository
 import jp.ac.tachibana.food_survey.services.session.SessionListenerService
+import jp.ac.tachibana.food_survey.services.session.managers.CurrentSessionStateManager
 import jp.ac.tachibana.food_survey.services.session.model.*
 
 // todo: fix syntax - context bounds?
 // todo: store users to check rights
 class DefaultSessionListenerService[F[_]](
-  sessionRepository: SessionRepository[F],
+  currentSessionStateManager: CurrentSessionStateManager[F],
   outputsMapRef: Ref[F, Map[User.Id, Queue[F, OutputSessionMessage]]]
 )(implicit F: GenConcurrent[F, ?])
     extends SessionListenerService[F]:
 
+  // todo: check session state
   override def connect[L](
     listenerBuilder: SessionListenerBuilder[F, L],
     processor: SessionMessageProcessor[F]
   )(user: User): F[Either[SessionListenerService.ConnectionError, L]] =
-    OptionT(sessionRepository.getActiveSession)
+    OptionT(currentSessionStateManager.getCurrentSession)
       .filter(_.participants.exists(_.id === user.id))
       .semiflatMap { session =>
         for {
@@ -56,7 +58,7 @@ class DefaultSessionListenerService[F[_]](
   )(input: SessionListenerInput[F]): fs2.Stream[F, Unit] =
     input.evalMap { inputMessage =>
       val processF = for {
-        session <- OptionT(sessionRepository.getActiveSession)
+        session <- OptionT(currentSessionStateManager.getCurrentSession)
         outputMessage <- OptionT(processor(inputMessage, session, user))
         result <- OptionT.liftF(broadcastMessage(outputMessage)(session))
       } yield result
@@ -67,7 +69,7 @@ class DefaultSessionListenerService[F[_]](
     broadcastMessageToAll(OutputSessionMessage.Shutdown) >> outputsMapRef.set(Map.empty)
 
   private def broadcastMessageToAll(message: OutputSessionMessage): F[Unit] =
-    sessionRepository.getActiveSession.map(_.traverse(broadcastMessage(message)))
+    currentSessionStateManager.getCurrentSession.map(_.traverse(broadcastMessage(message)))
 
   private def broadcastMessage(message: OutputSessionMessage)(session: Session): F[Unit] =
     session.participants.traverse(u => sendMessage(message)(u.id)).void
@@ -81,7 +83,9 @@ class DefaultSessionListenerService[F[_]](
 
 object DefaultSessionListenerService:
 
-  def create[F[_]](sessionRepository: SessionRepository[F])(implicit F: GenConcurrent[F, ?]): F[SessionListenerService[F]] =
+  def create[F[_]](
+    currentSessionStateManager: CurrentSessionStateManager[F]
+  )(implicit F: GenConcurrent[F, ?]): F[SessionListenerService[F]] =
     for {
       outputsMapRef <- Ref.of(Map.empty[User.Id, Queue[F, OutputSessionMessage]])
-    } yield new DefaultSessionListenerService[F](sessionRepository, outputsMapRef)
+    } yield new DefaultSessionListenerService[F](currentSessionStateManager, outputsMapRef)

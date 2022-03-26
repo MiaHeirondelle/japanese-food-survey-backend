@@ -28,13 +28,13 @@ class PostgresSessionRepository[F[_]: Async](implicit tr: Transactor[F]) extends
       .option
       .transact(tr)
 
-  override def getActiveSession: F[Option[Session.NotFinished]] =
+  override def getActiveSession: F[Option[Session.AwaitingUsers]] =
     val query = selectActiveSessionQuery
       .flatMap(_.traverse(activeSession =>
         for {
           respondents <- selectSessionRespondentsQuery(activeSession.number)
           admin <- selectSessionAdminQuery(activeSession.admin)
-          result: Session.NotFinished <- activeSession match {
+          result <- activeSession match {
             case s: SessionPostgresFormat.AwaitingUsers =>
               Session
                 .AwaitingUsers(
@@ -81,7 +81,7 @@ class PostgresSessionRepository[F[_]: Async](implicit tr: Transactor[F]) extends
     Update[(Session.Number, User.Id)]("""INSERT INTO "survey_session_participant" (session_number, user_id) VALUES (?, ?)""")
       .updateMany(data)
 
-  override def setActiveSession(session: Session): F[Unit] =
+  override def finishSession(session: Session.Finished): F[Unit] =
     val encoded = SessionPostgresFormat.fromDomain(session)
     val encodedState = encoded.asStateJson
     sql"""UPDATE "survey_session" SET
@@ -92,11 +92,6 @@ class PostgresSessionRepository[F[_]: Async](implicit tr: Transactor[F]) extends
         """.stripMargin.update.run
       .transact(tr)
       .void
-
-  // todo: comment no-op
-  override def updateInProgressSession(
-    update: Session.InProgress => Session.InProgressOrFinished): F[Option[Session.InProgressOrFinished]] =
-    none[Session.InProgressOrFinished].pure[F]
 
   override def reset: F[Unit] =
     val query = for {

@@ -2,6 +2,7 @@ package jp.ac.tachibana.food_survey.domain.session
 
 import cats.data.NonEmptyList
 import cats.instances.int.*
+import cats.syntax.option.*
 import cats.syntax.order.*
 import cats.{Eq, Order}
 
@@ -51,18 +52,6 @@ object Session:
           admin :: joinedUsers
       }
 
-    def activeRespondents: List[User.Respondent] =
-      session match {
-        case AwaitingUsers(_, joinedUsers, _, _) =>
-          joinedUsers
-        case CanBegin(_, joinedUsers, _) =>
-          joinedUsers.toList
-        case InProgress(_, joinedUsers, _, _, _, _) =>
-          joinedUsers.toList
-        case Finished(_, joinedUsers, _, _) =>
-          Nil
-      }
-
   sealed trait NotFinished extends Session
   sealed trait NotBegan extends Session with Session.NotFinished
   sealed trait InProgressOrFinished extends Session
@@ -96,8 +85,8 @@ object Session:
   object InProgress:
 
     extension (session: Session.InProgress)
-      def currentElement: Option[SessionElement] =
-        session.template.element(session.currentElementNumber)
+      def currentElement: SessionElement =
+        session.template.element(session.currentElementNumber).get
 
       def answersCount(questionId: Question.Id) =
         session.answers.answersCount(questionId)
@@ -106,7 +95,7 @@ object Session:
         session.answers.isQuestionAnswered(questionId)
 
       def incrementCurrentElementNumber: Option[Session.InProgress] =
-        Option.when(session.currentElementNumber >= session.template.elementNumberLimit)(
+        Option.when(session.currentElementNumber < session.template.elementNumberLimit)(
           session.copy(currentElementNumber = session.currentElementNumber.increment))
 
       def provideAnswer(answer: QuestionAnswer): Session.InProgress =
@@ -124,6 +113,7 @@ object Session:
         template
       )
 
+  // todo: template snapshot?
   case class Finished(
     number: Session.Number,
     joinedUsers: NonEmptyList[User.Respondent],
@@ -131,3 +121,13 @@ object Session:
     answers: SessionAnswers)
       extends Session.InProgressOrFinished:
     val status: Session.Status = Session.Status.Finished
+
+  object Finished:
+
+    def fromInProgress(session: Session.InProgress): Session.Finished =
+      Session.Finished(
+        session.number,
+        session.joinedUsers,
+        session.admin,
+        session.answers
+      )

@@ -7,7 +7,7 @@ import cats.syntax.functor.*
 import jp.ac.tachibana.food_survey.domain.session.Session
 import jp.ac.tachibana.food_survey.domain.user.User
 import jp.ac.tachibana.food_survey.services.session.SessionService
-import jp.ac.tachibana.food_survey.services.session.SessionService.SessionCreationError
+import jp.ac.tachibana.food_survey.services.session.SessionService.CreateSessionError
 
 class DefaultSessionProgram[F[_]: Functor](sessionService: SessionService[F]) extends SessionProgram[F]:
 
@@ -20,9 +20,9 @@ class DefaultSessionProgram[F[_]: Functor](sessionService: SessionService[F]) ex
     sessionService
       .create(creator, respondents)
       .map(_.left.map {
-        case SessionService.SessionCreationError.InvalidParticipants =>
+        case SessionService.CreateSessionError.InvalidParticipants =>
           SessionProgram.SessionCreationError.InvalidParticipants
-        case SessionService.SessionCreationError.WrongSessionStatus =>
+        case SessionService.CreateSessionError.WrongSessionStatus =>
           SessionProgram.SessionCreationError.WrongSessionStatus
       })
 
@@ -30,9 +30,9 @@ class DefaultSessionProgram[F[_]: Functor](sessionService: SessionService[F]) ex
     sessionService
       .join(respondent)
       .map(_.left.map {
-        case SessionService.SessionJoinError.InvalidParticipant =>
+        case SessionService.JoinSessionError.InvalidParticipant =>
           SessionProgram.SessionJoinError.InvalidParticipant
-        case SessionService.SessionJoinError.WrongSessionStatus =>
+        case SessionService.JoinSessionError.WrongSessionStatus =>
           SessionProgram.SessionJoinError.WrongSessionStatus
       })
 

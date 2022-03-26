@@ -3,7 +3,7 @@ package jp.ac.tachibana.food_survey.services.session
 import cats.data.NonEmptyList
 
 import jp.ac.tachibana.food_survey.domain.question.QuestionAnswer
-import jp.ac.tachibana.food_survey.domain.session.Session
+import jp.ac.tachibana.food_survey.domain.session.{Session, SessionElement}
 import jp.ac.tachibana.food_survey.domain.user.User
 
 trait SessionService[F[_]]:
@@ -12,45 +12,68 @@ trait SessionService[F[_]]:
 
   def create(
     creator: User.Admin,
-    respondents: NonEmptyList[User.Id]): F[Either[SessionService.SessionCreationError, Session.AwaitingUsers]]
+    respondents: NonEmptyList[User.Id]): F[Either[SessionService.CreateSessionError, Session.AwaitingUsers]]
 
-  def join(respondent: User.Respondent): F[Either[SessionService.SessionJoinError, Session.NotBegan]]
+  def join(respondent: User.Respondent): F[Either[SessionService.JoinSessionError, Session.NotBegan]]
 
-  def begin(admin: User.Admin): F[Either[SessionService.SessionBeginError, Session.InProgress]]
+  def begin(admin: User.Admin): F[Either[SessionService.BeginSessionError, Session.InProgress]]
 
-  // todo: wrong answer error
-  def provideAnswer(answer: QuestionAnswer): F[Either[SessionService.ProvideAnswerError, Session.InProgressOrFinished]]
+  def provideAnswer(
+    answer: QuestionAnswer): F[Either[SessionService.ProvideAnswerError, SessionService.SessionElementState.Question]]
 
-  def finish: F[Either[SessionService.SessionFinishError, Session.Finished]]
+  def transitionToNextElement: F[Either[SessionService.TransitionToNextElementError, Option[SessionService.SessionElementState]]]
+
+  def finish: F[Either[SessionService.FinishSessionError, Session.Finished]]
 
   // todo: update signature
   def stop: F[Unit]
 
 object SessionService:
 
-  sealed trait SessionCreationError
+  sealed trait SessionElementState:
+    def session: Session.InProgressOrFinished
 
-  object SessionCreationError:
-    case object InvalidParticipants extends SessionCreationError
-    case object WrongSessionStatus extends SessionCreationError
+  object SessionElementState:
+    case class Finished(session: Session.Finished) extends SessionElementState
+    case class Question(
+      session: Session.InProgress,
+      state: SessionService.QuestionState,
+      question: SessionElement.Question)
+        extends SessionElementState
 
-  sealed trait SessionJoinError
+  enum QuestionState:
+    case Pending, Finished
 
-  object SessionJoinError:
-    case object InvalidParticipant extends SessionJoinError
-    case object WrongSessionStatus extends SessionJoinError
+  sealed trait CreateSessionError
 
-  sealed trait SessionBeginError
+  object CreateSessionError:
+    case object InvalidParticipants extends SessionService.CreateSessionError
+    case object WrongSessionStatus extends SessionService.CreateSessionError
 
-  object SessionBeginError:
-    case object WrongSessionStatus extends SessionBeginError
+  sealed trait JoinSessionError
+
+  object JoinSessionError:
+    case object InvalidParticipant extends SessionService.JoinSessionError
+    case object WrongSessionStatus extends SessionService.JoinSessionError
+
+  sealed trait BeginSessionError
+
+  object BeginSessionError:
+    case object WrongSessionStatus extends SessionService.BeginSessionError
+    case object InvalidTemplate extends SessionService.BeginSessionError
+
+  sealed trait TransitionToNextElementError
+
+  object TransitionToNextElementError:
+    case object WrongSessionStatus extends SessionService.TransitionToNextElementError
 
   sealed trait ProvideAnswerError
 
   object ProvideAnswerError:
-    case object WrongSessionStatus extends ProvideAnswerError
+    case object WrongSessionStatus extends SessionService.ProvideAnswerError
+    case object IncorrectSessionState extends SessionService.ProvideAnswerError
 
-  sealed trait SessionFinishError
+  sealed trait FinishSessionError
 
-  object SessionFinishError:
-    case object WrongSessionStatus extends SessionFinishError
+  object FinishSessionError:
+    case object WrongSessionStatus extends SessionService.FinishSessionError

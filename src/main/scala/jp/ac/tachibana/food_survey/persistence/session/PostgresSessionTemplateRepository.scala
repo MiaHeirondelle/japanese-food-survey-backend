@@ -1,5 +1,6 @@
 package jp.ac.tachibana.food_survey.persistence.session
 
+import cats.data.NonEmptyVector
 import cats.effect.Async
 import cats.syntax.applicative.*
 
@@ -10,7 +11,7 @@ class PostgresSessionTemplateRepository[F[_]: Async] extends SessionTemplateRepo
 
   override def getActiveTemplate: F[SessionTemplate] =
     SessionTemplate(
-      Vector(
+      NonEmptyVector.of(
         SessionElement.Question(
           SessionElement.Number.zero,
           Question.Basic(

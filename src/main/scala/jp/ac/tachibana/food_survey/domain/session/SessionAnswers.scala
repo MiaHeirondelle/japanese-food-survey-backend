@@ -10,15 +10,23 @@ class SessionAnswers private (
   respondentsCount: Int,
   answers: Map[Question.Id, NonEmptyMap[User.Id, QuestionAnswer]]) {
 
-  def withAnswer(answer: QuestionAnswer): SessionAnswers =
+  def provideAnswer(answer: QuestionAnswer): SessionAnswers =
     new SessionAnswers(
       respondentsCount,
       answers.updated(
         answer.questionId,
         answers.get(answer.questionId).fold(NonEmptyMap.one(answer.respondentId, answer))(_.add(answer.respondentId -> answer))))
 
+  def answersCount(questionId: Question.Id): Int =
+    answers.get(questionId).fold(0)(_.length)
+
   def isQuestionAnswered(questionId: Question.Id): Boolean =
     answers.get(questionId).exists(_.length === respondentsCount)
+
+  def isQuestionAnsweredBy(
+    questionId: Question.Id,
+    respondentId: User.Id): Boolean =
+    answers.get(questionId).exists(_.contains(respondentId))
 
   def toMap: Map[Question.Id, NonEmptyMap[User.Id, QuestionAnswer]] =
     answers

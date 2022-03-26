@@ -1,5 +1,7 @@
 package jp.ac.tachibana.food_survey.domain.question
 
+import cats.Eq
+
 import jp.ac.tachibana.food_survey.domain.question.Question.ScaleText
 
 sealed trait Question:
@@ -16,6 +18,9 @@ object Question:
   opaque type Id = String
 
   object Id:
+
+    implicit val eq: Eq[Question.Id] =
+      Eq.fromUniversalEquals
 
     def apply(questionId: String): Question.Id = questionId
 

@@ -6,16 +6,13 @@ trait SessionRepository[F[_]]:
 
   def getLatestSessionNumber: F[Option[Session.Number]]
 
-  def getActiveSession: F[Option[Session.NotFinished]]
+  def getActiveSession: F[Option[Session.AwaitingUsers]]
 
   // todo: session already in progress error
   def createNewSession(session: Session.AwaitingUsers): F[Unit]
 
-  // todo: no active session error
-  def setActiveSession(session: Session): F[Unit]
-
-  // todo: no active session error
-  def updateInProgressSession(update: Session.InProgress => Session.InProgressOrFinished): F[Option[Session.InProgressOrFinished]]
+  // todo: session doesn't exist/already finished error
+  def finishSession(session: Session.Finished): F[Unit]
 
   // todo: remove
   def reset: F[Unit]

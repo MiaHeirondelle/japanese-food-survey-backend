@@ -29,14 +29,14 @@ object Main extends IOApp.Simple:
         val authTokenRepository = new PostgresAuthTokenRepository[IO]()
         val credentialsRepository = new PostgresCredentialsRepository[IO]()
         val userRepository = new PostgresUserRepository[IO]()
+        val sessionRepository = new PostgresSessionRepository[IO]()
         val sessionTemplateRepository = new PostgresSessionTemplateRepository[IO]
 
         for {
-          sessionRepository <- CachingPostgresSessionRepository.make[IO]
 
           authenticationService <- DefaultAuthenticationService
             .create[IO](authTokenRepository, credentialsRepository, userRepository)
-          sessionService = new DefaultSessionService[IO](sessionRepository, sessionTemplateRepository, userRepository)
+          sessionService = new DefaultSessionService[IO](sessionRepository, sessionTemplateRepository, userRepository, ???, ???)
           sessionListenerService <- DefaultSessionListenerService.create[IO](sessionRepository)
           authenticationMiddleware =
             new AuthenticationMiddleware[IO](

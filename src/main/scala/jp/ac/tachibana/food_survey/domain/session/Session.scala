@@ -94,7 +94,7 @@ object Session:
         session.answers.isQuestionAnswered(questionId)
 
       def incrementCurrentElementNumber: Option[Session.InProgress] =
-        Option.when(session.currentElementNumber >= session.template.elementNumberLimit)(
+        Option.when(session.currentElementNumber < session.template.elementNumberLimit)(
           session.copy(currentElementNumber = session.currentElementNumber.increment))
 
       def provideAnswer(answer: QuestionAnswer): Session.InProgress =
@@ -119,3 +119,13 @@ object Session:
     answers: SessionAnswers)
       extends Session.InProgressOrFinished:
     val status: Session.Status = Session.Status.Finished
+
+  object Finished:
+
+    def fromInProgress(session: Session.InProgress): Session.Finished =
+      Session.Finished(
+        session.number,
+        session.joinedUsers,
+        session.admin,
+        session.answers
+      )

@@ -75,43 +75,14 @@ class DefaultSessionService[F[_]: Monad](
     } yield result
 
   override def join(respondent: User.Respondent): F[Either[SessionService.JoinSessionError, Session.NotBegan]] =
-    // todo: check if user in awaiting session
     awaitingUsersSessionManager
       .join(respondent)
       .map(_.leftMap {
-        case AwaitingUsersSessionManager.Error.NoSessionInProgress =>
+        case AwaitingUsersSessionManager.Error.InvalidSessionState =>
           SessionService.JoinSessionError.WrongSessionStatus
         case AwaitingUsersSessionManager.Error.InvalidParticipant =>
           SessionService.JoinSessionError.InvalidParticipant
       })
-
-//    OptionT(sessionRepository.getActiveSession)
-//      .semiflatMap {
-//        case s: Session.AwaitingUsers =>
-//          val updatedSession: Session.NotBegan =
-//            NonEmptyList.fromList(s.waitingForUsers.filterNot(_.id === respondent.id)) match {
-//              case Some(waitingForUsers) =>
-//                s.copy(
-//                  joinedUsers = respondent :: s.joinedUsers,
-//                  waitingForUsers = waitingForUsers
-//                )
-//
-//              case None =>
-//                Session.CanBegin(
-//                  number = s.number,
-//                  joinedUsers = NonEmptyList.of(respondent, s.joinedUsers*),
-//                  admin = s.admin
-//                )
-//            }
-//
-//          sessionRepository
-//            .setActiveSession(updatedSession)
-//            .as(updatedSession.asRight[SessionService.SessionJoinError])
-//
-//        case _ =>
-//          SessionService.SessionJoinError.WrongSessionStatus.asLeft[Session.NotBegan].pure[F]
-//      }
-//      .getOrElse(SessionService.SessionJoinError.WrongSessionStatus.asLeft[Session.NotBegan])
 
   override def begin(admin: User.Admin): F[Either[SessionService.BeginSessionError, Session.InProgress]] =
     // todo: check admin the same as creator?
@@ -132,10 +103,24 @@ class DefaultSessionService[F[_]: Monad](
 
   override def provideAnswer(
     answer: QuestionAnswer): F[Either[SessionService.ProvideAnswerError, SessionService.SessionElementState.Question]] =
-    ???
+    inProgressSessionManager
+      .provideAnswer(answer)
+      .map(_.leftMap {
+        case InProgressSessionManager.Error.NoSessionInProgress =>
+          SessionService.ProvideAnswerError.WrongSessionStatus
+        case InProgressSessionManager.Error.IncorrectSessionState =>
+          SessionService.ProvideAnswerError.IncorrectSessionState
+      })
 
   override def transitionToNextElement
-    : F[Either[SessionService.TransitionToNextElementError, Option[SessionService.SessionElementState]]] = ???
+    : F[Either[SessionService.TransitionToNextElementError, Option[SessionService.SessionElementState]]] =
+    inProgressSessionManager.transitionToNextElement
+      .map(_.leftMap {
+        case InProgressSessionManager.Error.NoSessionInProgress =>
+          SessionService.TransitionToNextElementError.WrongSessionStatus
+        case InProgressSessionManager.Error.IncorrectSessionState =>
+          SessionService.TransitionToNextElementError.WrongSessionStatus
+      })
 
   override def finish: F[Either[SessionService.FinishSessionError, Session.Finished]] = ???
 

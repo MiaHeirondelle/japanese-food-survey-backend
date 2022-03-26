@@ -7,7 +7,7 @@ trait AwaitingUsersSessionManager[F[_]]:
 
   def registerSession(session: Session.AwaitingUsers): F[Unit]
 
-  def join(user: User.Respondent): F[Either[AwaitingUsersSessionManager.Error, Session.NotBegan]]
+  def join(respondent: User.Respondent): F[Either[AwaitingUsersSessionManager.Error, Session.NotBegan]]
 
   def getCurrentState: F[Option[Session.NotBegan]]
 
@@ -18,5 +18,5 @@ object AwaitingUsersSessionManager:
   sealed trait Error
 
   object Error:
-    case object NoSessionInProgress extends AwaitingUsersSessionManager.Error
+    case object InvalidSessionState extends AwaitingUsersSessionManager.Error
     case object InvalidParticipant extends AwaitingUsersSessionManager.Error

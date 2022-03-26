@@ -64,7 +64,6 @@ object SessionService:
 
   object TransitionToNextElementError:
     case object WrongSessionStatus extends SessionService.TransitionToNextElementError
-    case object SessionOver extends SessionService.TransitionToNextElementError
 
   sealed trait ProvideAnswerError
 

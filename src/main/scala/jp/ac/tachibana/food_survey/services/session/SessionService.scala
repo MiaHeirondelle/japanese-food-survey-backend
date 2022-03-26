@@ -47,7 +47,7 @@ object SessionService:
 
   sealed trait ProvideAnswerError
 
-  object ProvideAnswer:
+  object ProvideAnswerError:
     case object WrongSessionStatus extends ProvideAnswerError
 
   sealed trait SessionFinishError

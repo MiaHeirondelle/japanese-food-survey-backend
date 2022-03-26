@@ -74,13 +74,17 @@ object Session:
     joinedUsers: NonEmptyList[User.Respondent],
     admin: User.Admin,
     // todo: refactor to an answers container (map [QuestionId, NonEmptyMap[UserId, Answer]?])
-    answers: Vector[QuestionAnswer],
+    answers: SessionAnswers,
     currentElementNumber: SessionElement.Number,
     template: SessionTemplate)
       extends Session.NotFinished with Session.InProgressOrFinished:
     val status: Session.Status = Session.Status.InProgress
 
   object InProgress:
+
+    extension (session: Session.InProgress)
+      def withAnswer(answer: QuestionAnswer): Session.InProgress =
+        session.copy(answers = session.answers.withAnswer(answer))
 
     def fromTemplate(
       session: Session.CanBegin,
@@ -89,7 +93,7 @@ object Session:
         session.number,
         session.joinedUsers,
         session.admin,
-        answers = Vector.empty,
+        answers = SessionAnswers(respondentsCount = session.joinedUsers.size),
         currentElementNumber = SessionElement.Number.zero,
         template
       )
@@ -98,6 +102,6 @@ object Session:
     number: Session.Number,
     joinedUsers: NonEmptyList[User.Respondent],
     admin: User.Admin,
-    answers: NonEmptyList[QuestionAnswer])
+    answers: SessionAnswers)
       extends Session.InProgressOrFinished:
     val status: Session.Status = Session.Status.Finished

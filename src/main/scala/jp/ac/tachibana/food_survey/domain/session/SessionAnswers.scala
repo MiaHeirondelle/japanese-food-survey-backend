@@ -17,8 +17,11 @@ class SessionAnswers private (
         answer.questionId,
         answers.get(answer.questionId).fold(NonEmptyMap.one(answer.respondentId, answer))(_.add(answer.respondentId -> answer))))
 
-  def questionAnswered(questionId: Question.Id): Boolean =
+  def isQuestionAnswered(questionId: Question.Id): Boolean =
     answers.get(questionId).exists(_.length === respondentsCount)
+
+  def toMap: Map[Question.Id, NonEmptyMap[User.Id, QuestionAnswer]] =
+    answers
 }
 
 object SessionAnswers {

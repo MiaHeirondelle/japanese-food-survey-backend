@@ -112,7 +112,9 @@ class DefaultSessionService[F[_]: Monad](
       .getOrElse(SessionService.SessionBeginError.WrongSessionStatus.asLeft[Session.InProgress])
 
   override def provideAnswer(answer: QuestionAnswer): F[Either[SessionService.ProvideAnswerError, Session.InProgressOrFinished]] =
-    ???
+    sessionRepository
+      .updateInProgressSession(_.withAnswer(answer))
+      .map(_.toRight(SessionService.ProvideAnswerError.WrongSessionStatus))
 
   override def finish: F[Either[SessionService.SessionFinishError, Session.Finished]] = ???
 

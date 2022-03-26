@@ -2,6 +2,7 @@ package jp.ac.tachibana.food_survey.domain.session
 
 import cats.data.NonEmptyList
 import cats.instances.int.*
+import cats.syntax.option.*
 import cats.syntax.order.*
 import cats.{Eq, Order}
 
@@ -84,8 +85,8 @@ object Session:
   object InProgress:
 
     extension (session: Session.InProgress)
-      def currentElement: Option[SessionElement] =
-        session.template.element(session.currentElementNumber)
+      def currentElement: SessionElement =
+        session.template.element(session.currentElementNumber).get
 
       def answersCount(questionId: Question.Id) =
         session.answers.answersCount(questionId)

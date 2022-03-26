@@ -25,5 +25,4 @@ object InProgressSessionManager:
   sealed trait Error
 
   object Error:
-    case object NoSessionInProgress extends InProgressSessionManager.Error
     case object IncorrectSessionState extends InProgressSessionManager.Error

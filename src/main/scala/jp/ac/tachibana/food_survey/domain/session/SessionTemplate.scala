@@ -1,8 +1,10 @@
 package jp.ac.tachibana.food_survey.domain.session
 
+import cats.data.NonEmptyVector
+
 import jp.ac.tachibana.food_survey.domain.question.Question
 
-case class SessionTemplate(elements: Vector[SessionElement])
+case class SessionTemplate(elements: NonEmptyVector[SessionElement])
 
 object SessionTemplate:
 
@@ -11,7 +13,4 @@ object SessionTemplate:
       SessionElement.Number(template.elements.length)
 
     def element(number: SessionElement.Number): Option[SessionElement] =
-      if (number.value > template.elements.length)
-        None
-      else
-        Some(template.elements(number.value))
+      template.elements.get(number.value)

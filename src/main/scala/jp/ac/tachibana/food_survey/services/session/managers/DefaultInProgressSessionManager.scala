@@ -20,37 +20,41 @@ class DefaultInProgressSessionManager[F[_]: Functor] private (ref: Ref[F, Option
 
   override def getCurrentState: F[Option[SessionService.SessionElementState]] =
     ref.get
-      .map(_.flatMap(state =>
-        state.session.currentElement.map { case e: SessionElement.Question =>
-          questionElementState(state.session, e)
+      .map(_.map(state =>
+        state.session match {
+          case session: Session.InProgress =>
+            session.currentElement match {
+              case e: SessionElement.Question =>
+                questionElementState(session, e)
+            }
+          case session: Session.Finished =>
+            SessionService.SessionElementState.Finished(session)
         }))
-
   override def provideAnswer(
     answer: QuestionAnswer): F[Either[InProgressSessionManager.Error, SessionService.SessionElementState.Question]] =
-    modifyNonEmpty { state =>
-      state.session.currentElement match {
-        case Some(e: SessionElement.Question) if e.question.id === answer.questionId =>
-          val newSession = state.session.provideAnswer(answer)
-          val newAnswerCount = newSession.answersCount(answer.questionId)
-          val newQuestionState = questionElementState(newSession, e)
+    modifyNonEmpty(state =>
+      mapInProgressSession(state)(session =>
+        session.currentElement match {
+          case e: SessionElement.Question if e.question.id === answer.questionId =>
+            val newSession = session.provideAnswer(answer)
+            val newAnswerCount = newSession.answersCount(answer.questionId)
+            val newQuestionState = questionElementState(newSession, e)
 
-          (state.copy(usersReadyToTransition = newAnswerCount, session = newSession).some, newQuestionState.asRight)
-        case Some(e: SessionElement.Question) =>
-          (state.some, InProgressSessionManager.Error.IncorrectSessionState.asLeft)
-        case None =>
-          (state.some, InProgressSessionManager.Error.IncorrectSessionState.asLeft)
-      }
-    }
+            (state.copy(usersReadyToTransition = newAnswerCount, session = newSession).some, newQuestionState.asRight)
+          case e: SessionElement.Question =>
+            errorStateTransformationResult(state)
+        }))
 
   override def transitionToNextElement: F[Either[InProgressSessionManager.Error, Option[SessionService.SessionElementState]]] =
-    modifyNonEmpty { state =>
-      val newSessionOpt = state.session.incrementCurrentElementNumber
-      val nextElementStateOpt = newSessionOpt.flatMap(s => s.currentElement.map(defaultSessionElementState(s)))
-      (
-        newSessionOpt.fold(state)(state.copy(usersReadyToTransition = 0, _)).some,
-        nextElementStateOpt.asRight
-      )
-    }
+    modifyNonEmpty(state =>
+      mapInProgressSession(state) { session =>
+        val newSessionOpt = session.incrementCurrentElementNumber
+        val nextElementStateOpt = newSessionOpt.map(s => defaultSessionElementState(s)(s.currentElement))
+        (
+          newSessionOpt.fold(state)(state.copy(usersReadyToTransition = 0, _)).some,
+          nextElementStateOpt.asRight
+        )
+      })
 
   override def unregisterSession: F[Unit] =
     ref.set(None)
@@ -58,7 +62,7 @@ class DefaultInProgressSessionManager[F[_]: Functor] private (ref: Ref[F, Option
   private def modifyNonEmpty[A](
     f: DefaultInProgressSessionManager.InternalState => DefaultInProgressSessionManager.StateTransformationResult[A])
     : F[DefaultInProgressSessionManager.OperationResult[A]] =
-    ref.modify(stateOpt => stateOpt.fold((stateOpt, InProgressSessionManager.Error.NoSessionInProgress.asLeft[A]))(f))
+    ref.modify(stateOpt => stateOpt.fold((stateOpt, InProgressSessionManager.Error.IncorrectSessionState.asLeft[A]))(f))
 
 object DefaultInProgressSessionManager:
 
@@ -70,7 +74,7 @@ object DefaultInProgressSessionManager:
 
   private case class InternalState(
     usersReadyToTransition: Int,
-    session: Session.InProgress)
+    session: Session.InProgressOrFinished)
 
   private def defaultSessionElementState(
     session: Session.InProgress
@@ -89,3 +93,16 @@ object DefaultInProgressSessionManager:
       else
         SessionService.QuestionState.Pending
     SessionService.SessionElementState.Question(session, questionState, questionElement)
+
+  private def errorStateTransformationResult[A](state: InternalState): StateTransformationResult[A] =
+    (state.some, InProgressSessionManager.Error.IncorrectSessionState.asLeft[A])
+
+  private def mapInProgressSession[A](
+    state: DefaultInProgressSessionManager.InternalState
+  )(f: Session.InProgress => StateTransformationResult[A]): StateTransformationResult[A] =
+    state.session match {
+      case session: Session.InProgress =>
+        f(session)
+      case _: Session.Finished =>
+        errorStateTransformationResult(state)
+    }

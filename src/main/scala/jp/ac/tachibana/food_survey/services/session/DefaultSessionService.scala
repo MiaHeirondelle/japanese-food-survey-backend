@@ -7,6 +7,7 @@ import cats.syntax.either.*
 import cats.syntax.eq.*
 import cats.syntax.flatMap.*
 import cats.syntax.functor.*
+import cats.syntax.option.*
 
 import jp.ac.tachibana.food_survey.domain.question.QuestionAnswer
 import jp.ac.tachibana.food_survey.domain.session.Session
@@ -28,7 +29,13 @@ class DefaultSessionService[F[_]: Monad](
 
   override def getActiveSession: F[Option[Session.NotFinished]] =
     OptionT(inProgressSessionManager.getCurrentState)
-      .map(_.session: Session.NotFinished)
+      .subflatMap {
+        case s: SessionService.SessionElementState.Finished =>
+          none
+
+        case s: SessionService.SessionElementState.Question =>
+          s.session.some
+      }
       .orElseF(awaitingUsersSessionManager.getCurrentState.widen)
       .orElseF(sessionRepository.getActiveSession.widen)
       .value
@@ -105,21 +112,15 @@ class DefaultSessionService[F[_]: Monad](
     answer: QuestionAnswer): F[Either[SessionService.ProvideAnswerError, SessionService.SessionElementState.Question]] =
     inProgressSessionManager
       .provideAnswer(answer)
-      .map(_.leftMap {
-        case InProgressSessionManager.Error.NoSessionInProgress =>
-          SessionService.ProvideAnswerError.WrongSessionStatus
-        case InProgressSessionManager.Error.IncorrectSessionState =>
-          SessionService.ProvideAnswerError.IncorrectSessionState
+      .map(_.leftMap { case InProgressSessionManager.Error.IncorrectSessionState =>
+        SessionService.ProvideAnswerError.IncorrectSessionState
       })
 
   override def transitionToNextElement
     : F[Either[SessionService.TransitionToNextElementError, Option[SessionService.SessionElementState]]] =
     inProgressSessionManager.transitionToNextElement
-      .map(_.leftMap {
-        case InProgressSessionManager.Error.NoSessionInProgress =>
-          SessionService.TransitionToNextElementError.WrongSessionStatus
-        case InProgressSessionManager.Error.IncorrectSessionState =>
-          SessionService.TransitionToNextElementError.WrongSessionStatus
+      .map(_.leftMap { case InProgressSessionManager.Error.IncorrectSessionState =>
+        SessionService.TransitionToNextElementError.WrongSessionStatus
       })
 
   override def finish: F[Either[SessionService.FinishSessionError, Session.Finished]] = ???

@@ -9,4 +9,4 @@ case class SessionTemplateFormat(elements: List[SessionElementFormat]) derives E
 object SessionTemplateFormat:
 
   def fromDomain(sessionTemplate: SessionTemplate): SessionTemplateFormat =
-    SessionTemplateFormat(sessionTemplate.elements.toList.map(SessionElementFormat.fromDomain))
+    SessionTemplateFormat(sessionTemplate.elements.toVector.toList.map(SessionElementFormat.fromDomain))

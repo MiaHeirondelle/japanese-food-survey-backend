@@ -31,9 +31,10 @@ trait SessionService[F[_]]:
 object SessionService:
 
   sealed trait SessionElementState:
-    def session: Session.InProgress
+    def session: Session.InProgressOrFinished
 
   object SessionElementState:
+    case class Finished(session: Session.Finished) extends SessionElementState
     case class Question(
       session: Session.InProgress,
       state: SessionService.QuestionState,
@@ -59,6 +60,7 @@ object SessionService:
 
   object BeginSessionError:
     case object WrongSessionStatus extends SessionService.BeginSessionError
+    case object InvalidTemplate extends SessionService.BeginSessionError
 
   sealed trait TransitionToNextElementError
 

@@ -104,6 +104,10 @@ class DefaultSessionService[F[_]: Monad](
       }
       .getOrElse(SessionService.BeginSessionError.WrongSessionStatus.asLeft[Session.InProgress])
 
+  override def getCurrentElementState: F[Either[SessionService.GetCurrentElementStateError, SessionService.SessionElementState]] =
+    inProgressSessionManager.getCurrentState
+      .map(_.toRight(SessionService.GetCurrentElementStateError.IncorrectSessionState))
+
   override def provideAnswer(
     answer: QuestionAnswer): F[Either[SessionService.ProvideAnswerError, SessionService.SessionElementState.Question]] =
     inProgressSessionManager
@@ -113,7 +117,7 @@ class DefaultSessionService[F[_]: Monad](
       })
 
   override def transitionToNextElement
-    : F[Either[SessionService.TransitionToNextElementError, Option[SessionService.SessionElementState]]] =
+    : F[Either[SessionService.TransitionToNextElementError, SessionService.SessionElementState]] =
     inProgressSessionManager.transitionToNextElement
       .map(_.leftMap { case InProgressSessionManager.Error.IncorrectSessionState =>
         SessionService.TransitionToNextElementError.WrongSessionStatus

@@ -14,7 +14,7 @@ sealed trait InputSessionMessageFormat
 object InputSessionMessageFormat:
 
   case object BeginSession extends InputSessionMessageFormat
-  case object ReadyForNextQuestion extends InputSessionMessageFormat
+  case object ReadyForNextElement extends InputSessionMessageFormat
 
   implicit val decoder: Decoder[InputSessionMessageFormat] =
     Decoder.instance { cursor =>
@@ -24,8 +24,8 @@ object InputSessionMessageFormat:
           case InputSessionMessageTypeFormat.BeginSession =>
             InputSessionMessageFormat.BeginSession.asRight
 
-          case InputSessionMessageTypeFormat.ReadyForNextQuestion =>
-            InputSessionMessageFormat.ReadyForNextQuestion.asRight
+          case InputSessionMessageTypeFormat.ReadyForNextElement =>
+            InputSessionMessageFormat.ReadyForNextElement.asRight
         }
       } yield result
     }
@@ -45,6 +45,6 @@ object InputSessionMessageFormat:
         case InputSessionMessageFormat.BeginSession =>
           InputSessionMessage.BeginSession
 
-        case InputSessionMessageFormat.ReadyForNextQuestion =>
-          InputSessionMessage.ReadyForNextQuestion
+        case InputSessionMessageFormat.ReadyForNextElement =>
+          InputSessionMessage.ReadyForNextElement
       }

@@ -6,6 +6,7 @@ import jp.ac.tachibana.food_survey.domain.question.QuestionAnswer
 import jp.ac.tachibana.food_survey.domain.session.{Session, SessionElement}
 import jp.ac.tachibana.food_survey.domain.user.User
 
+// todo: restructure to session state service and session operations service
 trait SessionService[F[_]]:
 
   def getActiveSession: F[Option[Session.NotFinished]]
@@ -18,10 +19,12 @@ trait SessionService[F[_]]:
 
   def begin(admin: User.Admin): F[Either[SessionService.BeginSessionError, Session.InProgress]]
 
+  def getCurrentElementState: F[Either[SessionService.GetCurrentElementStateError, SessionService.SessionElementState]]
+
   def provideAnswer(
     answer: QuestionAnswer): F[Either[SessionService.ProvideAnswerError, SessionService.SessionElementState.Question]]
 
-  def transitionToNextElement: F[Either[SessionService.TransitionToNextElementError, Option[SessionService.SessionElementState]]]
+  def transitionToNextElement: F[Either[SessionService.TransitionToNextElementError, SessionService.SessionElementState]]
 
   def finish: F[Either[SessionService.FinishSessionError, Session.Finished]]
 
@@ -33,13 +36,17 @@ object SessionService:
   sealed trait SessionElementState:
     def session: Session.InProgressOrFinished
 
+  sealed trait NonPendingSessionElementState extends SessionElementState
+
   object SessionElementState:
-    case class Finished(session: Session.Finished) extends SessionElementState
+
+    case class Finished(session: Session.Finished) extends NonPendingSessionElementState
     case class Question(
       session: Session.InProgress,
       state: SessionService.QuestionState,
       question: SessionElement.Question)
-        extends SessionElementState
+        extends NonPendingSessionElementState
+    case class Transitioning(session: Session.InProgress) extends SessionElementState
 
   enum QuestionState:
     case Pending, Finished
@@ -62,6 +69,11 @@ object SessionService:
     case object WrongSessionStatus extends SessionService.BeginSessionError
     case object InvalidTemplate extends SessionService.BeginSessionError
 
+  sealed trait GetCurrentElementStateError
+
+  object GetCurrentElementStateError:
+    case object IncorrectSessionState extends SessionService.GetCurrentElementStateError
+
   sealed trait TransitionToNextElementError
 
   object TransitionToNextElementError:
@@ -70,7 +82,6 @@ object SessionService:
   sealed trait ProvideAnswerError
 
   object ProvideAnswerError:
-    case object WrongSessionStatus extends SessionService.ProvideAnswerError
     case object IncorrectSessionState extends SessionService.ProvideAnswerError
 
   sealed trait FinishSessionError

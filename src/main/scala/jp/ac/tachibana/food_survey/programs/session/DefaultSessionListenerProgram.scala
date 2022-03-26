@@ -4,6 +4,7 @@ import cats.Monad
 import cats.data.{EitherT, NonEmptyList, OptionT}
 import cats.syntax.flatMap.*
 import cats.syntax.functor.*
+import cats.syntax.option.*
 
 import jp.ac.tachibana.food_survey.domain.session.Session
 import jp.ac.tachibana.food_survey.domain.user.User
@@ -33,11 +34,9 @@ class DefaultSessionListenerProgram[F[_]: Monad](
     user: User): F[Option[OutputSessionMessage]] =
     message match {
       case InputSessionMessage.BeginSession =>
-        val beginF = for {
-          session <- OptionT(sessionService.getActiveSession)
-          beganSession <- OptionT(sessionService.begin(session.admin).map(_.toOption))
-        } yield OutputSessionMessage.SessionBegan(beganSession): OutputSessionMessage
-        beginF.value
-      case InputSessionMessage.ReadyForNextQuestion =>
+        OptionT(sessionService.begin(session.admin).map(_.toOption))
+          .map[OutputSessionMessage](OutputSessionMessage.SessionBegan.apply)
+          .value
+      case InputSessionMessage.ReadyForNextElement =>
         ???
     }

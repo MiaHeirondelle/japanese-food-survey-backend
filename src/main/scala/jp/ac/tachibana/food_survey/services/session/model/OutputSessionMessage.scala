@@ -13,4 +13,6 @@ object OutputSessionMessage:
 
   case class SessionBegan(session: Session.InProgress) extends OutputSessionMessage
 
+  case class TimerTick(remainingTimeMs: Long) extends OutputSessionMessage
+
   case object Shutdown extends OutputSessionMessage

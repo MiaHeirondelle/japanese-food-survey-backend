@@ -21,6 +21,9 @@ object OutputSessionMessageFormat:
 
         case sb: OutputSessionMessageFormat.SessionBegan =>
           Encoder.AsObject[OutputSessionMessageFormat.SessionBegan].encodeObject(sb)
+
+        case tt: OutputSessionMessageFormat.TimerTick =>
+          Encoder.AsObject[OutputSessionMessageFormat.TimerTick].encodeObject(tt)
       }
       base.add("type", Encoder[OutputSessionMessageTypeFormat].apply(r.messageType))
     }
@@ -37,6 +40,10 @@ object OutputSessionMessageFormat:
     val messageType: OutputSessionMessageTypeFormat =
       OutputSessionMessageTypeFormat.SessionBegan
 
+  case class TimerTick(time_left_in_ms: Long) extends OutputSessionMessageFormat derives Encoder.AsObject:
+    val messageType: OutputSessionMessageTypeFormat =
+      OutputSessionMessageTypeFormat.TimerTick
+
   def toWebSocketFrame(message: OutputSessionMessage): WebSocketFrame =
     message match {
       case OutputSessionMessage.UserJoined(user, session) =>
@@ -52,6 +59,11 @@ object OutputSessionMessageFormat:
           OutputSessionMessageFormat.SessionBegan(
             SessionFormat.fromDomain(session)
           ))
+
+      case OutputSessionMessage.TimerTick(remainingTimeMs) =>
+        jsonToSocketFrame(
+          OutputSessionMessageFormat.TimerTick(remainingTimeMs)
+        )
 
       case OutputSessionMessage.Shutdown =>
         WebSocketFrame.Close()

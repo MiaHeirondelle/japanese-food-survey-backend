@@ -5,6 +5,7 @@ import cats.data.NonEmptyList
 import jp.ac.tachibana.food_survey.domain.question.QuestionAnswer
 import jp.ac.tachibana.food_survey.domain.session.{Session, SessionElement}
 import jp.ac.tachibana.food_survey.domain.user.User
+import jp.ac.tachibana.food_survey.domain.user.User.Respondent
 
 // todo: restructure to session state service and session operations service
 trait SessionService[F[_]]:
@@ -24,7 +25,11 @@ trait SessionService[F[_]]:
   def provideAnswer(
     answer: QuestionAnswer): F[Either[SessionService.ProvideAnswerError, SessionService.SessionElementState.Question]]
 
-  def transitionToNextElement: F[Either[SessionService.TransitionToNextElementError, SessionService.SessionElementState]]
+  def transitionToNextElement
+    : F[Either[SessionService.TransitionToNextElementError, SessionService.NonPendingSessionElementState]]
+
+  def transitionToNextElement(
+    respondentId: User.Id): F[Either[SessionService.TransitionToNextElementError, SessionService.SessionElementState]]
 
   def finish: F[Either[SessionService.FinishSessionError, Session.Finished]]
 

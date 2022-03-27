@@ -2,8 +2,10 @@ package jp.ac.tachibana.food_survey.programs.session
 
 import cats.Monad
 import cats.data.{EitherT, NonEmptyList, OptionT}
+import cats.syntax.applicative.*
 import cats.syntax.flatMap.*
 import cats.syntax.functor.*
+import cats.syntax.functorFilter.*
 import cats.syntax.option.*
 
 import jp.ac.tachibana.food_survey.domain.session.Session
@@ -38,5 +40,23 @@ class DefaultSessionListenerProgram[F[_]: Monad](
           .map[OutputSessionMessage](OutputSessionMessage.SessionBegan.apply)
           .value
       case InputSessionMessage.ReadyForNextElement =>
-        ???
+        user match {
+          case respondent: User.Respondent =>
+            EitherT(sessionService.transitionToNextElement(respondent.id))
+              .semiflatMap[Option[OutputSessionMessage]] {
+                case SessionService.SessionElementState.Finished(session) =>
+                  // todo: check session only finished once
+                  sessionService.finish.as(OutputSessionMessage.SessionFinished(session).some)
+                case SessionService.SessionElementState.Question(session, state, question) =>
+                  OutputSessionMessage.ElementSelected(session, question).some.pure[F]
+                case SessionService.SessionElementState.Transitioning(session) =>
+                  none[OutputSessionMessage].pure[F]
+              }
+              .toOption
+              .flattenOption
+              .value
+          case admin: User.Admin =>
+            // todo: immediate transition
+            none[OutputSessionMessage].pure[F]
+        }
     }

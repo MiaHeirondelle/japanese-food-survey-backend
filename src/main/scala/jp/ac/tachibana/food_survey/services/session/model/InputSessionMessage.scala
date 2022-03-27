@@ -4,4 +4,4 @@ sealed trait InputSessionMessage
 
 object InputSessionMessage:
   case object BeginSession extends InputSessionMessage
-  case object ReadyForNextQuestion extends InputSessionMessage
+  case object ReadyForNextElement extends InputSessionMessage

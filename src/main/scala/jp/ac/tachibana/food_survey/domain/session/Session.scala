@@ -95,8 +95,8 @@ object Session:
         session.answers.isQuestionAnswered(questionId)
 
       def incrementCurrentElementNumber: Option[Session.InProgress] =
-        Option.when(session.currentElementNumber < session.template.elementNumberLimit)(
-          session.copy(currentElementNumber = session.currentElementNumber.increment))
+        val newElementNumber = session.currentElementNumber.increment
+        Option.when(newElementNumber < session.template.elementNumberLimit)(session.copy(currentElementNumber = newElementNumber))
 
       def provideAnswer(answer: QuestionAnswer): Session.InProgress =
         session.copy(answers = session.answers.provideAnswer(answer))

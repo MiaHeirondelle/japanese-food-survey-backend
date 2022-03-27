@@ -15,7 +15,7 @@ import jp.ac.tachibana.food_survey.persistence.user.PostgresUserRepository
 import jp.ac.tachibana.food_survey.programs.session.{DefaultSessionListenerProgram, DefaultSessionProgram}
 import jp.ac.tachibana.food_survey.programs.user.DefaultUserProgram
 import jp.ac.tachibana.food_survey.services.auth.DefaultAuthenticationService
-import jp.ac.tachibana.food_survey.services.session.managers.{DefaultAwaitingUsersSessionManager, DefaultCurrentSessionStateManager, DefaultInProgressSessionManager}
+import jp.ac.tachibana.food_survey.services.session.managers.*
 import jp.ac.tachibana.food_survey.services.session.{DefaultSessionListenerService, DefaultSessionService}
 import jp.ac.tachibana.food_survey.services.user.DefaultUserService
 

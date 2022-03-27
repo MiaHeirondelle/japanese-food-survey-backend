@@ -13,7 +13,7 @@ trait CurrentSessionStateManager[F[_]]:
 
   def registerInProgressSession(session: Session.InProgress): F[Unit]
 
-  def finishSession(session: Session.Finished): F[Unit]
+  def finishInProgressSession: F[Option[Session.Finished]]
 
   def refreshAwaitingUsersSessionManager: F[Unit]
 

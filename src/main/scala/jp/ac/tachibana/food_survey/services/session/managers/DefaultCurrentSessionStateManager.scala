@@ -45,8 +45,14 @@ class DefaultCurrentSessionStateManager[F[_]: Monad](
   override def registerInProgressSession(session: Session.InProgress): F[Unit] =
     awaitingUsersSessionManager.unregisterSession >> inProgressSessionManager.registerSession(session)
 
-  override def finishSession(session: Session.Finished): F[Unit] =
-    sessionRepository.finishSession(session) >> unregisterAll
+  override def finishInProgressSession: F[Option[Session.Finished]] =
+    inProgressSessionManager.getCurrentState
+      .flatMap {
+        case Some(element: SessionService.SessionElementState.Finished) =>
+          sessionRepository.finishSession(element.session) >> unregisterAll.as(element.session.some)
+        case _ =>
+          none[Session.Finished].pure[F]
+      }
 
   override def refreshAwaitingUsersSessionManager: F[Unit] =
     // If some state is registered, a refresh is not necessary

@@ -22,6 +22,17 @@ class PostgresSessionTemplateRepository[F[_]: Async] extends SessionTemplateRepo
               maxBoundCaption = "とても\n食べてみつぃ"
             )
           )
+        ),
+        SessionElement.Question(
+          SessionElement.Number(1),
+          Question.Basic(
+            Question.Id("test2"),
+            text = "あなたは、「涙の出ないタマネギ」を\n食べてみたいと思いますか？",
+            Question.ScaleText(
+              minBoundCaption = "まったく\n食べたくない",
+              maxBoundCaption = "とても\n食べてみつぃ"
+            )
+          )
         )
       )
     ).pure[F]

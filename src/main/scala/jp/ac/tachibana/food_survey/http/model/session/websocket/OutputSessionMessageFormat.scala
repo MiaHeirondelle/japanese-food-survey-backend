@@ -4,12 +4,12 @@ import io.circe.Encoder
 import io.circe.syntax.*
 import org.http4s.websocket.WebSocketFrame
 
-import jp.ac.tachibana.food_survey.http.model.session.SessionFormat
+import jp.ac.tachibana.food_survey.http.model.question.QuestionFormat
+import jp.ac.tachibana.food_survey.http.model.session.{SessionElementFormat, SessionFormat}
 import jp.ac.tachibana.food_survey.http.model.user.UserFormat
 import jp.ac.tachibana.food_survey.services.session.model.*
 
-sealed trait OutputSessionMessageFormat:
-  def messageType: OutputSessionMessageTypeFormat
+sealed abstract class OutputSessionMessageFormat(val `type`: OutputSessionMessageTypeFormat)
 
 object OutputSessionMessageFormat:
 
@@ -21,21 +21,41 @@ object OutputSessionMessageFormat:
 
         case sb: OutputSessionMessageFormat.SessionBegan =>
           Encoder.AsObject[OutputSessionMessageFormat.SessionBegan].encodeObject(sb)
+
+        case tt: OutputSessionMessageFormat.TimerTick =>
+          Encoder.AsObject[OutputSessionMessageFormat.TimerTick].encodeObject(tt)
+
+        case qs: OutputSessionMessageFormat.ElementSelected =>
+          Encoder.AsObject[OutputSessionMessageFormat.ElementSelected].encodeObject(qs)
+
+        case sf: OutputSessionMessageFormat.SessionFinished =>
+          Encoder.AsObject[OutputSessionMessageFormat.SessionFinished].encodeObject(sf)
       }
-      base.add("type", Encoder[OutputSessionMessageTypeFormat].apply(r.messageType))
+      base.add("type", Encoder[OutputSessionMessageTypeFormat].apply(r.`type`))
     }
 
   case class UserJoined(
     user: UserFormat,
     session: SessionFormat)
-      extends OutputSessionMessageFormat
-      derives Encoder.AsObject:
-    val messageType: OutputSessionMessageTypeFormat =
-      OutputSessionMessageTypeFormat.UserJoined
+      extends OutputSessionMessageFormat(OutputSessionMessageTypeFormat.UserJoined)
+      derives Encoder.AsObject
 
-  case class SessionBegan(session: SessionFormat) extends OutputSessionMessageFormat derives Encoder.AsObject:
-    val messageType: OutputSessionMessageTypeFormat =
-      OutputSessionMessageTypeFormat.SessionBegan
+  case class SessionBegan(session: SessionFormat) extends OutputSessionMessageFormat(OutputSessionMessageTypeFormat.SessionBegan)
+      derives Encoder.AsObject
+
+  case class TimerTick(time_left_in_ms: Long) extends OutputSessionMessageFormat(OutputSessionMessageTypeFormat.TimerTick)
+      derives Encoder.AsObject
+
+  case class ElementSelected(
+    session: SessionFormat,
+    element: SessionElementFormat)
+      extends OutputSessionMessageFormat(OutputSessionMessageTypeFormat.ElementSelected)
+      derives Encoder.AsObject
+
+  case class SessionFinished(
+    session: SessionFormat)
+      extends OutputSessionMessageFormat(OutputSessionMessageTypeFormat.SessionFinished)
+      derives Encoder.AsObject
 
   def toWebSocketFrame(message: OutputSessionMessage): WebSocketFrame =
     message match {
@@ -52,6 +72,26 @@ object OutputSessionMessageFormat:
           OutputSessionMessageFormat.SessionBegan(
             SessionFormat.fromDomain(session)
           ))
+
+      case OutputSessionMessage.TimerTick(remainingTimeMs) =>
+        jsonToSocketFrame(
+          OutputSessionMessageFormat.TimerTick(remainingTimeMs)
+        )
+
+      case OutputSessionMessage.ElementSelected(session, element) =>
+        jsonToSocketFrame(
+          OutputSessionMessageFormat.ElementSelected(
+            SessionFormat.fromDomain(session),
+            SessionElementFormat.fromDomain(element)
+          )
+        )
+
+      case OutputSessionMessage.SessionFinished(session) =>
+        jsonToSocketFrame(
+          OutputSessionMessageFormat.SessionFinished(
+            SessionFormat.fromDomain(session)
+          )
+        )
 
       case OutputSessionMessage.Shutdown =>
         WebSocketFrame.Close()

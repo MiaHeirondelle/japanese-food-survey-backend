@@ -15,8 +15,8 @@ import jp.ac.tachibana.food_survey.domain.session.Session
 import jp.ac.tachibana.food_survey.domain.user.User
 import jp.ac.tachibana.food_survey.persistence.session.{SessionRepository, SessionTemplateRepository}
 import jp.ac.tachibana.food_survey.persistence.user.UserRepository
+import jp.ac.tachibana.food_survey.services.session.managers.*
 import jp.ac.tachibana.food_survey.services.session.managers.InProgressSessionManager.Error
-import jp.ac.tachibana.food_survey.services.session.managers.{AwaitingUsersSessionManager, CurrentSessionStateManager, InProgressSessionManager}
 
 class DefaultSessionService[F[_]: Monad](
   sessionTemplateRepository: SessionTemplateRepository[F],
@@ -25,8 +25,6 @@ class DefaultSessionService[F[_]: Monad](
   awaitingUsersSessionManager: AwaitingUsersSessionManager[F],
   inProgressSessionManager: InProgressSessionManager[F])
     extends SessionService[F]:
-
-  // todo: current session state (cached)
 
   override def getActiveSession: F[Option[Session.NotFinished]] =
     OptionT(currentSessionStateManager.getCurrentSession).subflatMap {
@@ -40,7 +38,7 @@ class DefaultSessionService[F[_]: Monad](
     creator: User.Admin,
     respondents: NonEmptyList[User.Id]): F[Either[SessionService.CreateSessionError, Session.AwaitingUsers]] =
     for {
-      // todo: get session structure and persist session snapshot
+      // todo: persist session snapshot
       sessionOpt <- getActiveSession
       result <- sessionOpt match {
         case None =>
@@ -104,6 +102,10 @@ class DefaultSessionService[F[_]: Monad](
       }
       .getOrElse(SessionService.BeginSessionError.WrongSessionStatus.asLeft[Session.InProgress])
 
+  override def getCurrentElementState: F[Either[SessionService.GetCurrentElementStateError, SessionService.SessionElementState]] =
+    inProgressSessionManager.getCurrentState
+      .map(_.toRight(SessionService.GetCurrentElementStateError.IncorrectSessionState))
+
   override def provideAnswer(
     answer: QuestionAnswer): F[Either[SessionService.ProvideAnswerError, SessionService.SessionElementState.Question]] =
     inProgressSessionManager
@@ -113,13 +115,22 @@ class DefaultSessionService[F[_]: Monad](
       })
 
   override def transitionToNextElement
-    : F[Either[SessionService.TransitionToNextElementError, Option[SessionService.SessionElementState]]] =
+    : F[Either[SessionService.TransitionToNextElementError, SessionService.NonPendingSessionElementState]] =
     inProgressSessionManager.transitionToNextElement
       .map(_.leftMap { case InProgressSessionManager.Error.IncorrectSessionState =>
         SessionService.TransitionToNextElementError.WrongSessionStatus
       })
 
-  override def finish: F[Either[SessionService.FinishSessionError, Session.Finished]] = ???
+  override def transitionToNextElement(
+    respondentId: User.Id): F[Either[SessionService.TransitionToNextElementError, SessionService.SessionElementState]] =
+    inProgressSessionManager
+      .transitionToNextElement(respondentId)
+      .map(_.leftMap { case InProgressSessionManager.Error.IncorrectSessionState =>
+        SessionService.TransitionToNextElementError.WrongSessionStatus
+      })
+
+  override def finish: F[Either[SessionService.FinishSessionError, Session.Finished]] =
+    currentSessionStateManager.finishInProgressSession.map(_.toRight(SessionService.FinishSessionError.WrongSessionStatus))
 
   override def stop: F[Unit] =
     currentSessionStateManager.reset

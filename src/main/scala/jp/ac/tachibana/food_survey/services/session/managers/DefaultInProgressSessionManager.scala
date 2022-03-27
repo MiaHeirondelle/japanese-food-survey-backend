@@ -1,6 +1,7 @@
 package jp.ac.tachibana.food_survey.services.session.managers
 
 import cats.Functor
+import cats.data.NonEmptySet
 import cats.effect.{Ref, Sync}
 import cats.syntax.either.*
 import cats.syntax.functor.*
@@ -9,6 +10,7 @@ import cats.syntax.order.*
 
 import jp.ac.tachibana.food_survey.domain.question.{Question, QuestionAnswer}
 import jp.ac.tachibana.food_survey.domain.session.{Session, SessionAnswers, SessionElement}
+import jp.ac.tachibana.food_survey.domain.user.User
 import jp.ac.tachibana.food_survey.services.session.SessionService
 import jp.ac.tachibana.food_survey.services.session.managers.DefaultInProgressSessionManager.*
 
@@ -17,20 +19,18 @@ class DefaultInProgressSessionManager[F[_]: Functor] private (ref: Ref[F, Option
 
   // todo: prevent registering if already registered
   override private[managers] def registerSession(session: Session.InProgress): F[Unit] =
-    ref.set(Some(DefaultInProgressSessionManager.InternalState(usersReadyToTransition = 0, session)))
+    ref.set(
+      DefaultInProgressSessionManager
+        .InternalState(
+          DefaultInProgressSessionManager.TransitionState.CurrentElement(Set.empty),
+          session
+        )
+        .some
+    )
 
   override def getCurrentState: F[Option[SessionService.SessionElementState]] =
-    ref.get
-      .map(_.map(state =>
-        state.session match {
-          case session: Session.InProgress =>
-            session.currentElement match {
-              case e: SessionElement.Question =>
-                questionElementState(session, e)
-            }
-          case session: Session.Finished =>
-            SessionService.SessionElementState.Finished(session)
-        }))
+    ref.get.map(_.map(currentElementState))
+
   override def provideAnswer(
     answer: QuestionAnswer): F[Either[InProgressSessionManager.Error, SessionService.SessionElementState.Question]] =
     modifyNonEmpty(state =>
@@ -41,21 +41,65 @@ class DefaultInProgressSessionManager[F[_]: Functor] private (ref: Ref[F, Option
             val newAnswerCount = newSession.answersCount(answer.questionId)
             val newQuestionState = questionElementState(newSession, e)
 
-            (state.copy(usersReadyToTransition = newAnswerCount, session = newSession).some, newQuestionState.asRight)
+            (state.copy(session = newSession).some, newQuestionState.asRight)
           case e: SessionElement.Question =>
             errorStateTransformationResult(state)
         }))
 
-  override def transitionToNextElement: F[Either[InProgressSessionManager.Error, Option[SessionService.SessionElementState]]] =
+  override def transitionToNextElement: F[Either[InProgressSessionManager.Error, SessionService.NonPendingSessionElementState]] =
+    modifyNonEmpty(state => mapInProgressSession(state)(transitionSessionToNextElementState))
+
+  override def transitionToNextElement(
+    respondentId: User.Id): F[Either[InProgressSessionManager.Error, SessionService.SessionElementState]] =
     modifyNonEmpty(state =>
       mapInProgressSession(state) { session =>
-        val newSessionOpt = session.incrementCurrentElementNumber
-        val nextElementStateOpt = newSessionOpt.map(s => defaultSessionElementState(s)(s.currentElement))
-        (
-          newSessionOpt.fold(state)(state.copy(usersReadyToTransition = 0, _)).some,
-          nextElementStateOpt.asRight
-        )
+        state.transition match {
+          case t: DefaultInProgressSessionManager.TransitionState.CurrentElement =>
+            val transition = t.copy(t.usersReadyToTransition + respondentId)
+            if (session.joinedUsers.forall(r => transition.usersReadyToTransition.contains(r.id)))
+              val newState = state.copy(transition = DefaultInProgressSessionManager.TransitionState.NotTransitioning)
+              (newState.some, currentElementState(newState).asRight)
+            else
+              val newState = state.copy(transition)
+              (newState.some, currentElementState(newState).asRight)
+
+          case t: DefaultInProgressSessionManager.TransitionState.NextElement =>
+            val transition = t.copy(t.usersReadyToTransition.add(respondentId))
+            if (session.joinedUsers.forall(r => transition.usersReadyToTransition.contains(r.id)))
+              transitionSessionToNextElementState(session)
+            else
+              val newState = state.copy(transition)
+              (newState.some, currentElementState(newState).asRight)
+
+          case DefaultInProgressSessionManager.TransitionState.NotTransitioning =>
+            val transition = DefaultInProgressSessionManager.TransitionState.NextElement(NonEmptySet.one(respondentId))
+            if (session.joinedUsers.forall(r => transition.usersReadyToTransition.contains(r.id)))
+              transitionSessionToNextElementState(session)
+            else
+              val newState = state.copy(transition)
+              (newState.some, currentElementState(newState).asRight)
+        }
       })
+
+  private def transitionSessionToNextElementState(
+    session: Session.InProgress): StateTransformationResult[SessionService.NonPendingSessionElementState] =
+    session.incrementCurrentElementNumber.getOrElse(Session.Finished.fromInProgress(session)) match {
+      case inProgress: Session.InProgress =>
+        val newState = DefaultInProgressSessionManager.InternalState(
+          DefaultInProgressSessionManager.TransitionState.NotTransitioning,
+          inProgress
+        )
+        val elementState = nonPendingCurrentSessionElementState(inProgress)
+        (newState.some, elementState.asRight)
+
+      case finished: Session.Finished =>
+        val newState = DefaultInProgressSessionManager.InternalState(
+          DefaultInProgressSessionManager.TransitionState.NotTransitioning,
+          finished
+        )
+        val elementState = SessionService.SessionElementState.Finished(finished)
+        (newState.some, elementState.asRight)
+    }
 
   override private[managers] def unregisterSession: F[Unit] =
     ref.set(None)
@@ -76,14 +120,36 @@ object DefaultInProgressSessionManager:
   private type StateTransformationResult[A] =
     (Option[DefaultInProgressSessionManager.InternalState], OperationResult[A])
 
+  sealed private trait TransitionState
+
+  private object TransitionState:
+    case class CurrentElement(usersReadyToTransition: Set[User.Id]) extends DefaultInProgressSessionManager.TransitionState
+    case class NextElement(usersReadyToTransition: NonEmptySet[User.Id]) extends DefaultInProgressSessionManager.TransitionState
+    case object NotTransitioning extends DefaultInProgressSessionManager.TransitionState
+
   private case class InternalState(
-    usersReadyToTransition: Int,
+    transition: DefaultInProgressSessionManager.TransitionState,
     session: Session.InProgressOrFinished)
 
-  private def defaultSessionElementState(
-    session: Session.InProgress
-  )(sessionElement: SessionElement): SessionService.SessionElementState =
-    sessionElement match {
+  private def currentElementState(state: DefaultInProgressSessionManager.InternalState): SessionService.SessionElementState =
+    state.session match {
+      case inProgress: Session.InProgress =>
+        state.transition match {
+          case _: DefaultInProgressSessionManager.TransitionState.CurrentElement =>
+            SessionService.SessionElementState.Transitioning(inProgress)
+
+          case _: DefaultInProgressSessionManager.TransitionState.NextElement =>
+            SessionService.SessionElementState.Transitioning(inProgress)
+
+          case DefaultInProgressSessionManager.TransitionState.NotTransitioning =>
+            nonPendingCurrentSessionElementState(inProgress)
+        }
+      case finished: Session.Finished =>
+        SessionService.SessionElementState.Finished(finished)
+    }
+
+  private def nonPendingCurrentSessionElementState(session: Session.InProgress): SessionService.NonPendingSessionElementState =
+    session.currentElement match {
       case e: SessionElement.Question =>
         SessionService.SessionElementState.Question(session, SessionService.QuestionState.Pending, e)
     }

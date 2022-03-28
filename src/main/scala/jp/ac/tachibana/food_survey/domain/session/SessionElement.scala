@@ -1,11 +1,14 @@
 package jp.ac.tachibana.food_survey.domain.session
 
+import scala.concurrent.duration.FiniteDuration
+
 import cats.instances.int.catsKernelStdOrderForInt
 import cats.{Order, Show}
 
 import jp.ac.tachibana.food_survey.domain.question.Question as SessionQuestion
 
-sealed trait SessionElement
+sealed trait SessionElement:
+  def showDuration: FiniteDuration
 
 object SessionElement:
 
@@ -30,5 +33,6 @@ object SessionElement:
   // case class Text(title: String, text: String) extends SessionElement
   case class Question(
     number: SessionElement.Number,
-    question: SessionQuestion)
+    question: SessionQuestion,
+    showDuration: FiniteDuration)
       extends SessionElement

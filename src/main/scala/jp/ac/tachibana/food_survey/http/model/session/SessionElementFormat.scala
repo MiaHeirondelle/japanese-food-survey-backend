@@ -11,7 +11,7 @@ object SessionElementFormat:
 
   def fromDomain(element: SessionElement): SessionElementFormat =
     element match {
-      case SessionElement.Question(number, question) =>
+      case SessionElement.Question(number, question, _) =>
         SessionElementFormat.Question(
           number = number.value,
           question = QuestionFormat.fromDomain(question)

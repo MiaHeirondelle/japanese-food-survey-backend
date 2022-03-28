@@ -3,11 +3,13 @@ package jp.ac.tachibana.food_survey.persistence.session
 import cats.data.NonEmptyVector
 import cats.effect.Async
 import cats.syntax.applicative.*
+import doobie.*
+import doobie.implicits.*
 
 import jp.ac.tachibana.food_survey.domain.question.Question
 import jp.ac.tachibana.food_survey.domain.session.{SessionElement, SessionTemplate}
 
-class PostgresSessionTemplateRepository[F[_]: Async] extends SessionTemplateRepository[F]:
+class PostgresSessionTemplateRepository[F[_]: Async](implicit tr: Transactor[F]) extends SessionTemplateRepository[F]:
 
   override def getActiveTemplate: F[SessionTemplate] =
     SessionTemplate(

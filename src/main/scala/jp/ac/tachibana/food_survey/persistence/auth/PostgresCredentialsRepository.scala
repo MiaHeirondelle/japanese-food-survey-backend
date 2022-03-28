@@ -8,7 +8,7 @@ import doobie.implicits.*
 import doobie.postgres.implicits.*
 
 import jp.ac.tachibana.food_survey.domain.user.{User, UserCredentials}
-import jp.ac.tachibana.food_survey.persistence.util.ParameterInstances.*
+import jp.ac.tachibana.food_survey.persistence.formats.ParameterInstances.*
 import jp.ac.tachibana.food_survey.services.auth.domain.HashedUserCredentials
 import jp.ac.tachibana.food_survey.util.crypto.{Hash, Salt, Secret}
 

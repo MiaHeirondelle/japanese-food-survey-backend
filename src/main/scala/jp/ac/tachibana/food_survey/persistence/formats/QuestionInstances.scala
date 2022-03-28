@@ -1,4 +1,4 @@
-package jp.ac.tachibana.food_survey.persistence.util
+package jp.ac.tachibana.food_survey.persistence.formats
 
 import cats.syntax.show.*
 import doobie.*
@@ -7,7 +7,7 @@ import doobie.postgres.circe.jsonb.implicits.*
 import doobie.postgres.implicits.*
 
 import jp.ac.tachibana.food_survey.domain.question.Question
-import jp.ac.tachibana.food_survey.persistence.util.QuestionInstances.*
+import jp.ac.tachibana.food_survey.persistence.formats.QuestionInstances.*
 
 trait QuestionInstances:
 

@@ -1,4 +1,4 @@
-package jp.ac.tachibana.food_survey.persistence.util
+package jp.ac.tachibana.food_survey.persistence.formats
 
 import cats.Show
 import cats.data.NonEmptyList
@@ -13,8 +13,8 @@ import io.circe.{Decoder, Encoder, Json}
 import jp.ac.tachibana.food_survey.domain.session.Session
 import jp.ac.tachibana.food_survey.domain.session.Session.Status
 import jp.ac.tachibana.food_survey.domain.user.User
-import jp.ac.tachibana.food_survey.persistence.util.SessionInstances.{SessionPostgresFormat, SessionStatePostgresFormat}
-import jp.ac.tachibana.food_survey.persistence.util.UserInstances.*
+import jp.ac.tachibana.food_survey.persistence.formats.SessionInstances.{SessionPostgresFormat, SessionStatePostgresFormat}
+import jp.ac.tachibana.food_survey.persistence.formats.UserInstances.*
 
 trait SessionInstances:
 

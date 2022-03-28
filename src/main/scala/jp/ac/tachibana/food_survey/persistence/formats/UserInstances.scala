@@ -1,4 +1,4 @@
-package jp.ac.tachibana.food_survey.persistence.util
+package jp.ac.tachibana.food_survey.persistence.formats
 
 import doobie.implicits.*
 import doobie.postgres.implicits.*

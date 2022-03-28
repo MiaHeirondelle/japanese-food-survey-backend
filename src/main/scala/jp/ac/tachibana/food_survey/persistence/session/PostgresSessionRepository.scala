@@ -12,10 +12,11 @@ import doobie.implicits.*
 import doobie.postgres.circe.jsonb.implicits.*
 import doobie.postgres.implicits.*
 
-import jp.ac.tachibana.food_survey.domain.question.QuestionAnswer
-import jp.ac.tachibana.food_survey.domain.session.Session
+import jp.ac.tachibana.food_survey.domain.question.{Question, QuestionAnswer}
+import jp.ac.tachibana.food_survey.domain.session.{Session, SessionAnswers}
 import jp.ac.tachibana.food_survey.domain.user.User
 import jp.ac.tachibana.food_survey.persistence.formats.ParameterInstances.*
+import jp.ac.tachibana.food_survey.persistence.formats.QuestionInstances.{AnswerId, AnswerPostgresFormat, QuestionPostgresFormat}
 import jp.ac.tachibana.food_survey.persistence.formats.SessionInstances.SessionPostgresFormat
 import jp.ac.tachibana.food_survey.services.auth.domain.HashedUserCredentials
 
@@ -85,14 +86,37 @@ class PostgresSessionRepository[F[_]: Async](implicit tr: Transactor[F]) extends
   override def finishSession(session: Session.Finished): F[Unit] =
     val encoded = SessionPostgresFormat.fromDomain(session)
     val encodedState = encoded.asStateJson
+    val update =
+      for {
+        _ <- updateSessionQuery(session)
+        answers = session.answers.toMap.values.flatMap(_.toSortedMap.values).toList
+        _ <- NonEmptyList.fromList(answers).traverse(insertAnswersQuery)
+      } yield ()
+
+    update.transact(tr)
+
+  private def updateSessionQuery(session: Session) =
+    val format = SessionPostgresFormat.fromDomain(session)
     sql"""UPDATE "survey_session" SET
-          |admin_id = ${encoded.admin},
-          |status = ${encoded.encodedStatus},
-          |state = $encodedState
-          |WHERE session_number = ${encoded.number}
+         |admin_id = ${format.admin},
+         |status = ${format.encodedStatus},
+         |state = ${format.asStateJson}
+         |WHERE session_number = ${format.number}
         """.stripMargin.update.run
-      .transact(tr)
-      .void
+
+  private def insertAnswersQuery(answers: NonEmptyList[QuestionAnswer]) =
+    for {
+      data <- answers.traverse(answer =>
+        AnswerId
+          .generate[ConnectionIO]
+          .map(AnswerPostgresFormat.fromDomain(_, answer) match {
+            case AnswerPostgresFormat(id, answerType, sessionNumber, respondentId, questionId, previousQuestionId) =>
+              (id, answerType, sessionNumber, respondentId, questionId, previousQuestionId)
+          }))
+      result <- Update[(AnswerId, AnswerPostgresFormat.Type, Session.Number, User.Id, Question.Id, Option[Question.Id])](
+        """INSERT INTO "answer" (id, type, session_number, respondent_id, question_id, previous_question_id) VALUES (?, ?, ?, ?, ?, ?)""")
+        .updateMany(data)
+    } yield result
 
   override def reset: F[Unit] =
     val query = for {

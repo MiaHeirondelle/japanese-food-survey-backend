@@ -2,8 +2,9 @@ package jp.ac.tachibana.food_survey.domain.question
 
 import cats.instances.string.catsKernelStdOrderForString
 import cats.{Order, Show}
-
 import jp.ac.tachibana.food_survey.domain.question.Question.ScaleText
+import jp.ac.tachibana.food_survey.domain.session.Session
+import jp.ac.tachibana.food_survey.domain.user.User
 
 sealed trait Question:
   def id: Question.Id
@@ -45,3 +46,29 @@ object Question:
     text: String,
     scaleText: Question.ScaleText)
       extends Question
+
+  extension (question: Question)
+    def toAnswer(
+      sessionNumber: Session.Number,
+      respondentId: User.Id,
+      value: QuestionAnswer.ScaleValue,
+      comment: QuestionAnswer.Comment): QuestionAnswer =
+      question match {
+        case Question.Basic(id, _, _) =>
+          QuestionAnswer.Basic(
+            sessionNumber,
+            id,
+            respondentId,
+            value,
+            comment
+          )
+        case Question.Repeated(id, previousQuestionId, _, _) =>
+          QuestionAnswer.Repeated(
+            sessionNumber,
+            id,
+            respondentId,
+            value,
+            comment,
+            previousQuestionId
+          )
+      }

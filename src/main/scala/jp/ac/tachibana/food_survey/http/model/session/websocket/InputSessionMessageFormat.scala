@@ -6,15 +6,13 @@ import io.circe.parser.decode
 import io.circe.{Decoder, DecodingFailure}
 import org.http4s.websocket.WebSocketFrame
 
+import jp.ac.tachibana.food_survey.domain.question.{Question, QuestionAnswer}
 import jp.ac.tachibana.food_survey.domain.session.Session
 import jp.ac.tachibana.food_survey.services.session.model.*
 
 sealed trait InputSessionMessageFormat
 
 object InputSessionMessageFormat:
-
-  case object BeginSession extends InputSessionMessageFormat
-  case object ReadyForNextElement extends InputSessionMessageFormat
 
   implicit val decoder: Decoder[InputSessionMessageFormat] =
     Decoder.instance { cursor =>
@@ -26,9 +24,22 @@ object InputSessionMessageFormat:
 
           case InputSessionMessageTypeFormat.ReadyForNextElement =>
             InputSessionMessageFormat.ReadyForNextElement.asRight
+
+          case InputSessionMessageTypeFormat.ProvideAnswer =>
+            Decoder[InputSessionMessageFormat.ProvideAnswer].apply(cursor)
         }
       } yield result
     }
+
+  case object BeginSession extends InputSessionMessageFormat
+  case object ReadyForNextElement extends InputSessionMessageFormat
+
+  case class ProvideAnswer(
+    question_id: String,
+    scale_value: Int,
+    comment: Option[String])
+      extends InputSessionMessageFormat
+      derives Decoder
 
   def fromWebSocketFrame(frame: WebSocketFrame): Option[InputSessionMessage] =
     frame match {
@@ -47,4 +58,11 @@ object InputSessionMessageFormat:
 
         case InputSessionMessageFormat.ReadyForNextElement =>
           InputSessionMessage.ReadyForNextElement
+
+        case InputSessionMessageFormat.ProvideAnswer(questionId, scaleValue, comment) =>
+          InputSessionMessage.ProvideAnswer(
+            Question.Id(questionId),
+            QuestionAnswer.ScaleValue(scaleValue),
+            QuestionAnswer.Comment(comment.fold("")(_.trim()))
+          )
       }

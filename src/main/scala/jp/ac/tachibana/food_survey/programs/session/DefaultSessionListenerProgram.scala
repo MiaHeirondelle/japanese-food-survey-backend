@@ -7,6 +7,7 @@ import cats.syntax.flatMap.*
 import cats.syntax.functor.*
 import cats.syntax.functorFilter.*
 import cats.syntax.option.*
+import cats.syntax.traverse.*
 
 import jp.ac.tachibana.food_survey.domain.session.Session
 import jp.ac.tachibana.food_survey.domain.user.User
@@ -43,15 +44,7 @@ class DefaultSessionListenerProgram[F[_]: Monad](
         user match {
           case respondent: User.Respondent =>
             EitherT(sessionService.transitionToNextElement(respondent.id))
-              .semiflatMap[Option[OutputSessionMessage]] {
-                case SessionService.SessionElementState.Finished(session) =>
-                  // todo: check session only finished once
-                  sessionService.finish.as(OutputSessionMessage.SessionFinished(session).some)
-                case SessionService.SessionElementState.Question(session, state, question) =>
-                  OutputSessionMessage.ElementSelected(session, question).some.pure[F]
-                case SessionService.SessionElementState.Transitioning(session) =>
-                  none[OutputSessionMessage].pure[F]
-              }
+              .semiflatMap(processTransitionToNextElementResult)
               .toOption
               .flattenOption
               .value
@@ -59,4 +52,40 @@ class DefaultSessionListenerProgram[F[_]: Monad](
             // todo: immediate transition
             none[OutputSessionMessage].pure[F]
         }
+      case InputSessionMessage.ProvideAnswer(questionId, scaleValue, comment) =>
+        session match {
+          case s: Session.InProgress =>
+            OptionT
+              .fromOption(s.questionById(questionId))
+              .flatMap { question =>
+                val answer = question.toAnswer(session.number, user.id, scaleValue, comment)
+                println(answer)
+                EitherT(sessionService.provideAnswer(answer)).toOption
+              }
+              .flatMap {
+                case SessionService.SessionElementState.Question(_, SessionService.QuestionState.Finished, _) =>
+                  println(("finished q", questionId))
+                  EitherT(sessionService.transitionToNextElement).toOption.flatMapF(processTransitionToNextElementResult)
+
+                case SessionService.SessionElementState.Question(_, SessionService.QuestionState.Pending, _) =>
+                  println(("pending q", questionId))
+                  OptionT.none
+              }
+              .value
+
+          case _ =>
+            none[OutputSessionMessage].pure[F]
+        }
+    }
+
+  private def processTransitionToNextElementResult(
+    elementState: SessionService.SessionElementState): F[Option[OutputSessionMessage]] =
+    elementState match {
+      case SessionService.SessionElementState.Finished(session) =>
+        // todo: check session only finished once
+        sessionService.finish.as(OutputSessionMessage.SessionFinished(session).some)
+      case SessionService.SessionElementState.Question(session, state, question) =>
+        OutputSessionMessage.ElementSelected(session, question).some.pure[F]
+      case SessionService.SessionElementState.Transitioning(session) =>
+        none[OutputSessionMessage].pure[F]
     }

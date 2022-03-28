@@ -1,0 +1,13 @@
+CREATE DOMAIN answer_id AS VARCHAR(36);
+
+CREATE TYPE answer_type AS ENUM ('basic', 'repeated');
+
+CREATE TABLE "answer" (
+  id                 answer_id   NOT NULL PRIMARY KEY,
+  type               answer_type NOT NUll,
+  session_number     int         NOT NULL REFERENCES "survey_session" (session_number),
+  respondent_id      user_id     NOT NULL REFERENCES "user" (id),
+  question_id        question_id NOT NULL REFERENCES "question" (id),
+  previous_answer_id answer_id   NULL REFERENCES "answer" (id),
+  UNIQUE (respondent_id, question_id, previous_answer_id)
+);

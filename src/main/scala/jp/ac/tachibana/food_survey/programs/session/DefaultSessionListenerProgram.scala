@@ -64,9 +64,11 @@ class DefaultSessionListenerProgram[F[_]: Monad](
               }
               .flatMap {
                 case SessionService.SessionElementState.Question(_, SessionService.QuestionState.Finished, _) =>
+                  println(("finished q", questionId))
                   EitherT(sessionService.transitionToNextElement).toOption.flatMapF(processTransitionToNextElementResult)
 
                 case SessionService.SessionElementState.Question(_, SessionService.QuestionState.Pending, _) =>
+                  println(("pending q", questionId))
                   OptionT.none
               }
               .value

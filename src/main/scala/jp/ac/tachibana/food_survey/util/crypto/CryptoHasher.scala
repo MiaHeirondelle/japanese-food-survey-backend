@@ -20,7 +20,7 @@ class CryptoHasher[F[_]: Sync](
 
   private val generateSalt: F[Salt] =
     Sync[F].delay {
-      val bytes = Array.ofDim[Byte](16)
+      val bytes = Array.ofDim[Byte](CryptoHasher.saltLength)
       random.nextBytes(bytes)
       Salt(bytes)
     }
@@ -37,6 +37,7 @@ class CryptoHasher[F[_]: Sync](
     salt: Salt): F[Boolean] =
     computeHash(string, salt).map(_.value === hash.value)
 
+  // todo: fix hash length
   def computeHash(
     string: String,
     salt: Salt): F[Hash] =

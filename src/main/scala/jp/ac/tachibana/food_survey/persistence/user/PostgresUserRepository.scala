@@ -8,7 +8,7 @@ import doobie.implicits.*
 import doobie.postgres.implicits.*
 
 import jp.ac.tachibana.food_survey.domain.user.User
-import jp.ac.tachibana.food_survey.persistence.util.ParameterInstances.*
+import jp.ac.tachibana.food_survey.persistence.formats.ParameterInstances.*
 import jp.ac.tachibana.food_survey.services.auth.domain.HashedUserCredentials
 
 class PostgresUserRepository[F[_]: Async](implicit tr: Transactor[F]) extends UserRepository[F]:

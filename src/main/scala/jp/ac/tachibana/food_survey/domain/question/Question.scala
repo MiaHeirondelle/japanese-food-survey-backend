@@ -1,6 +1,7 @@
 package jp.ac.tachibana.food_survey.domain.question
 
-import cats.Eq
+import cats.instances.string.catsKernelStdOrderForString
+import cats.{Order, Show}
 
 import jp.ac.tachibana.food_survey.domain.question.Question.ScaleText
 
@@ -19,8 +20,14 @@ object Question:
 
   object Id:
 
-    implicit val eq: Eq[Question.Id] =
-      Eq.fromUniversalEquals
+    implicit val order: Order[Question.Id] =
+      catsKernelStdOrderForString
+
+    implicit val ordering: Ordering[Question.Id] =
+      order.toOrdering
+
+    implicit val show: Show[Question.Id] =
+      Show.fromToString
 
     def apply(questionId: String): Question.Id = questionId
 

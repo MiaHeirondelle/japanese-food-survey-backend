@@ -1,6 +1,6 @@
 package jp.ac.tachibana.food_survey.domain.question
 
-import cats.Eq
+import cats.{Eq, Show}
 
 import jp.ac.tachibana.food_survey.domain.question.Question.ScaleText
 
@@ -21,6 +21,9 @@ object Question:
 
     implicit val eq: Eq[Question.Id] =
       Eq.fromUniversalEquals
+
+    implicit val show: Show[Question.Id] =
+      Show.fromToString
 
     def apply(questionId: String): Question.Id = questionId
 

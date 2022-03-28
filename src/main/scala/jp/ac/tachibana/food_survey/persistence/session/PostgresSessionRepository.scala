@@ -19,6 +19,7 @@ import jp.ac.tachibana.food_survey.persistence.util.ParameterInstances.*
 import jp.ac.tachibana.food_survey.persistence.util.SessionInstances.SessionPostgresFormat
 import jp.ac.tachibana.food_survey.services.auth.domain.HashedUserCredentials
 
+// todo: remove state
 class PostgresSessionRepository[F[_]: Async](implicit tr: Transactor[F]) extends SessionRepository[F]:
 
   // todo: trigger on status - only one active session

@@ -64,6 +64,6 @@ trait QuestionInstances:
 
 object QuestionInstances extends QuestionInstances:
 
-  object QuestionPostgresFormat:
+  private[persistence] object QuestionPostgresFormat:
     enum Type:
       case Basic, Repeated

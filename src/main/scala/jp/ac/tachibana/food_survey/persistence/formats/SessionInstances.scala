@@ -1,5 +1,7 @@
 package jp.ac.tachibana.food_survey.persistence.formats
 
+import scala.concurrent.duration.*
+
 import cats.Show
 import cats.data.NonEmptyList
 import cats.syntax.show.*
@@ -10,16 +12,20 @@ import doobie.postgres.implicits.*
 import io.circe.syntax.*
 import io.circe.{Decoder, Encoder, Json}
 
-import jp.ac.tachibana.food_survey.domain.session.Session
-import jp.ac.tachibana.food_survey.domain.session.Session.Status
+import jp.ac.tachibana.food_survey.domain.question.Question as SessionQuestion
+import jp.ac.tachibana.food_survey.domain.session.{Session, SessionElement}
 import jp.ac.tachibana.food_survey.domain.user.User
-import jp.ac.tachibana.food_survey.persistence.formats.SessionInstances.{SessionPostgresFormat, SessionStatePostgresFormat}
+import jp.ac.tachibana.food_survey.persistence.formats.QuestionInstances.*
+import jp.ac.tachibana.food_survey.persistence.formats.SessionInstances.{SessionElementPostgresFormat, SessionPostgresFormat, SessionStatePostgresFormat}
 import jp.ac.tachibana.food_survey.persistence.formats.UserInstances.*
 
 trait SessionInstances:
 
   implicit val sessionNumberMeta: Meta[Session.Number] =
     Meta[Int].timap(Session.Number(_))(_.value)
+
+  implicit val sessionElementNumberMeta: Meta[SessionElement.Number] =
+    Meta[Int].timap(SessionElement.Number(_))(_.value)
 
   implicit val sessionPostgresFormatStatusMeta: Meta[SessionPostgresFormat.Status] =
     pgEnumStringOpt[SessionPostgresFormat.Status](
@@ -32,6 +38,22 @@ trait SessionInstances:
       {
         case SessionPostgresFormat.Status.AwaitingUsers => "awaiting_users"
         case SessionPostgresFormat.Status.Finished      => "finished"
+      }
+    )
+
+  implicit val sessionElementPostgresFormatTypeMeta: Meta[SessionElementPostgresFormat.Type] =
+    pgEnumStringOpt(
+      "session_element_type",
+      {
+        case "question" => Some(SessionElementPostgresFormat.Type.Question)
+        case "review"   => Some(SessionElementPostgresFormat.Type.Review)
+        case "text"     => Some(SessionElementPostgresFormat.Type.Text)
+        case _          => None
+      },
+      {
+        case SessionElementPostgresFormat.Type.Question => "question"
+        case SessionElementPostgresFormat.Type.Review   => "review"
+        case SessionElementPostgresFormat.Type.Text     => "text"
       }
     )
 
@@ -61,6 +83,16 @@ trait SessionInstances:
         val encodedState = SessionStatePostgresFormat.encodeJson(s)
         val encodedStatus = SessionPostgresFormat.Status.fromDomain(s.status)
         (s.number, s.admin, encodedStatus, encodedState)
+      }
+
+  implicit val sessionElementPostgresFormatRead: Read[SessionElementPostgresFormat] =
+    Read[(SessionElement.Number, SessionElementPostgresFormat.Type, Option[SessionQuestion.Id], Int)]
+      .map {
+        case (number, SessionElementPostgresFormat.Type.Question, Some(questionId), showDurationSeconds) =>
+          SessionElementPostgresFormat.Question(number, questionId, showDurationSeconds.seconds)
+
+        case (number, _, _, _) =>
+          throw new Exception(show"Invalid session element: $number")
       }
 
 object SessionInstances extends SessionInstances:
@@ -151,3 +183,17 @@ object SessionInstances extends SessionInstances:
       // todo: replies (nel)
     ) extends SessionStatePostgresFormat
         derives Encoder.AsObject, Decoder
+
+  sealed abstract private[persistence] class SessionElementPostgresFormat(val `type`: SessionElementPostgresFormat.Type):
+    def number: SessionElement.Number
+    def showDuration: FiniteDuration
+
+  private[persistence] object SessionElementPostgresFormat:
+    case class Question(
+      number: SessionElement.Number,
+      questionId: SessionQuestion.Id,
+      showDuration: FiniteDuration)
+        extends SessionElementPostgresFormat(SessionElementPostgresFormat.Type.Question)
+
+    enum Type:
+      case Question, Review, Text

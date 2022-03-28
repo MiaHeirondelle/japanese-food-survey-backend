@@ -52,6 +52,7 @@ object Session:
           admin :: joinedUsers
       }
 
+  // todo: self types?
   sealed trait NotFinished extends Session
   sealed trait NotBegan extends Session with Session.NotFinished
   sealed trait InProgressOrFinished extends Session

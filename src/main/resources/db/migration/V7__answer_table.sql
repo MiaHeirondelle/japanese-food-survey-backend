@@ -8,6 +8,6 @@ CREATE TABLE "answer" (
   session_number     int         NOT NULL REFERENCES "survey_session" (session_number),
   respondent_id      user_id     NOT NULL REFERENCES "user" (id),
   question_id        question_id NOT NULL REFERENCES "question" (id),
-  previous_answer_id answer_id   NULL REFERENCES "answer" (id),
-  UNIQUE (respondent_id, question_id, previous_answer_id)
+  previous_question_id question_id   NULL REFERENCES "answer" (id),
+  UNIQUE (respondent_id, question_id, previous_question_id)
 );

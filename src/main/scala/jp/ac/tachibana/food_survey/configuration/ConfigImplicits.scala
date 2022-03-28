@@ -21,7 +21,7 @@ private[configuration] object ConfigImplicits:
       } yield values
 
   implicit def listReader[A: ConfigReader]: ConfigReader[List[A]] =
-    ConfigReader.derived[List[A]].orElse(stringCsvListReader)
+    ConfigReader.traversableReader[A, List].orElse(stringCsvListReader)
 
   implicit def setReader[A: ConfigReader]: ConfigReader[Set[A]] =
     listReader.map(_.toSet)

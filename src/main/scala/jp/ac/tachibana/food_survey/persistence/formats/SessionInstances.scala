@@ -16,7 +16,11 @@ import jp.ac.tachibana.food_survey.domain.question.Question as SessionQuestion
 import jp.ac.tachibana.food_survey.domain.session.{Session, SessionElement}
 import jp.ac.tachibana.food_survey.domain.user.User
 import jp.ac.tachibana.food_survey.persistence.formats.QuestionInstances.*
-import jp.ac.tachibana.food_survey.persistence.formats.SessionInstances.{SessionElementPostgresFormat, SessionPostgresFormat, SessionStatePostgresFormat}
+import jp.ac.tachibana.food_survey.persistence.formats.SessionInstances.{
+  SessionElementPostgresFormat,
+  SessionPostgresFormat,
+  SessionStatePostgresFormat
+}
 import jp.ac.tachibana.food_survey.persistence.formats.UserInstances.*
 
 trait SessionInstances:

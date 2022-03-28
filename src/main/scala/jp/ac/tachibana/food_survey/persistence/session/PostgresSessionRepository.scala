@@ -114,7 +114,7 @@ class PostgresSessionRepository[F[_]: Async](implicit tr: Transactor[F]) extends
               (id, answerType, sessionNumber, respondentId, questionId, previousQuestionId)
           }))
       result <- Update[(AnswerId, AnswerPostgresFormat.Type, Session.Number, User.Id, Question.Id, Option[Question.Id])](
-        """INSERT INTO "answer" (id, type, session_number, respondent_id, question_id, previous_question_id) VALUES (?, ?, ?, ?, ?, ?, ?)""")
+        """INSERT INTO "answer" (id, type, session_number, respondent_id, question_id, previous_question_id) VALUES (?, ?, ?, ?, ?, ?)""")
         .updateMany(data)
     } yield result
 

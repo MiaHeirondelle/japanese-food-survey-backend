@@ -89,7 +89,7 @@ object Session:
       def currentElement: SessionElement =
         session.template.element(session.currentElementNumber).get
 
-      def answersCount(questionId: Question.Id) =
+      def answersCount(questionId: Question.Id): Int =
         session.answers.answersCount(questionId)
 
       def isQuestionAnswered(questionId: Question.Id) =
@@ -98,6 +98,12 @@ object Session:
       def incrementCurrentElementNumber: Option[Session.InProgress] =
         val newElementNumber = session.currentElementNumber.increment
         Option.when(newElementNumber < session.template.elementNumberLimit)(session.copy(currentElementNumber = newElementNumber))
+
+      def questionById(questionId: Question.Id): Option[Question] =
+        session.template.elements.toVector.collectFirst {
+          case SessionElement.Question(number, question, showDuration) if question.id === questionId =>
+            question
+        }
 
       def provideAnswer(answer: QuestionAnswer): Session.InProgress =
         session.copy(answers = session.answers.provideAnswer(answer))

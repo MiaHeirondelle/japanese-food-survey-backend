@@ -5,7 +5,7 @@ import cats.syntax.show.*
 import io.circe.Decoder
 
 enum InputSessionMessageTypeFormat:
-  case BeginSession, ReadyForNextElement
+  case BeginSession, ReadyForNextElement, ProvideAnswer
 
 object InputSessionMessageTypeFormat:
 
@@ -13,5 +13,6 @@ object InputSessionMessageTypeFormat:
     Decoder.decodeString.emap {
       case "begin_session"          => InputSessionMessageTypeFormat.BeginSession.asRight
       case "ready_for_next_element" => InputSessionMessageTypeFormat.ReadyForNextElement.asRight
+      case "provide_answer"         => InputSessionMessageTypeFormat.ProvideAnswer.asRight
       case messageType              => show"Unknown input session message type $messageType".asLeft
     }

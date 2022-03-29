@@ -120,7 +120,16 @@ class PostgresSessionRepository[F[_]: Async](implicit tr: Transactor[F]) extends
 
   override def reset: F[Unit] =
     val query = for {
-      _ <- sql"""DELETE FROM "survey_session_participant"""".update.run
-      _ <- sql"""DELETE FROM "survey_session"""".update.run
+      latestSessionNumber <-
+        sql"""SELECT session_number FROM survey_session WHERE status != 'finished' ORDER BY session_number DESC LIMIT 1"""
+          .query[Session.Number]
+          .option
+      _ <- latestSessionNumber.traverse { sn =>
+        for {
+          _ <- sql"""DELETE FROM "answer" WHERE session_number = $sn""".update.run
+          _ <- sql"""DELETE FROM "survey_session_participant" WHERE session_number = $sn""".update.run
+          _ <- sql"""DELETE FROM "survey_session" WHERE session_number = $sn""".update.run
+        } yield ()
+      }
     } yield ()
     query.transact(tr)

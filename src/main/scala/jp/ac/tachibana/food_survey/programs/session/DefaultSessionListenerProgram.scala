@@ -59,7 +59,6 @@ class DefaultSessionListenerProgram[F[_]: Monad](
               .fromOption(s.questionById(questionId))
               .flatMap { question =>
                 val answer = question.toAnswer(session.number, user.id, scaleValue, comment)
-                println(answer)
                 EitherT(sessionService.provideAnswer(answer)).toOption
               }
               .flatMap {

@@ -7,8 +7,9 @@ import doobie.postgres.circe.jsonb.implicits.*
 import doobie.postgres.implicits.*
 import cats.effect.Sync
 import cats.syntax.option.*
-import java.util.UUID
+import jp.ac.tachibana.food_survey.domain.question
 
+import java.util.UUID
 import jp.ac.tachibana.food_survey.domain.question.{Question, QuestionAnswer}
 import jp.ac.tachibana.food_survey.domain.session.Session
 import jp.ac.tachibana.food_survey.domain.user.User
@@ -21,6 +22,12 @@ trait QuestionInstances:
 
   implicit val answerIdMeta: Meta[QuestionInstances.AnswerId] =
     Meta[String].timap(QuestionInstances.AnswerId(_))(_.value)
+
+  implicit val answerScaleValueMeta: Meta[QuestionAnswer.ScaleValue] =
+    Meta[Int].timap(QuestionAnswer.ScaleValue(_))(_.value)
+
+  implicit val answerCommentMeta: Meta[QuestionAnswer.Comment] =
+    Meta[String].timap(QuestionAnswer.Comment(_))(_.value)
 
   implicit val questionPostgresFormatTypeMeta: Meta[QuestionPostgresFormat.Type] =
     pgEnumStringOpt(
@@ -101,7 +108,9 @@ private[persistence] object QuestionInstances extends QuestionInstances:
     sessionNumber: Session.Number,
     respondentId: User.Id,
     questionId: Question.Id,
-    previousQuestionId: Option[Question.Id])
+    previousQuestionId: Option[Question.Id],
+    scaleValue: Option[QuestionAnswer.ScaleValue],
+    comment: Option[QuestionAnswer.Comment])
 
   object AnswerPostgresFormat:
     enum Type:
@@ -116,7 +125,9 @@ private[persistence] object QuestionInstances extends QuestionInstances:
         answer.sessionNumber,
         answer.respondentId,
         answer.questionId,
-        previousQuestionIdFromDomain(answer)
+        previousQuestionIdFromDomain(answer),
+        answer.value,
+        answer.comment
       )
 
     private def typeFromDomain(answer: QuestionAnswer): QuestionInstances.AnswerPostgresFormat.Type =

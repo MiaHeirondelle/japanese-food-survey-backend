@@ -5,6 +5,7 @@ import cats.syntax.option.*
 import io.circe.parser.decode
 import io.circe.{Decoder, DecodingFailure}
 import org.http4s.websocket.WebSocketFrame
+import cats.syntax.functorFilter.*
 
 import jp.ac.tachibana.food_survey.domain.question.{Question, QuestionAnswer}
 import jp.ac.tachibana.food_survey.domain.session.Session
@@ -36,7 +37,7 @@ object InputSessionMessageFormat:
 
   case class ProvideAnswer(
     question_id: String,
-    scale_value: Int,
+    scale_value: Option[Int],
     comment: Option[String])
       extends InputSessionMessageFormat
       derives Decoder
@@ -62,7 +63,11 @@ object InputSessionMessageFormat:
         case InputSessionMessageFormat.ProvideAnswer(questionId, scaleValue, comment) =>
           InputSessionMessage.ProvideAnswer(
             Question.Id(questionId),
-            QuestionAnswer.ScaleValue(scaleValue),
-            QuestionAnswer.Comment(comment.fold("")(_.trim()))
+            scaleValue.map(QuestionAnswer.ScaleValue(_)),
+            // todo: move validation
+            comment.flatMap { c =>
+              val trimmed = c.trim
+              Option.when(trimmed.nonEmpty)(QuestionAnswer.Comment(trimmed))
+            }
           )
       }

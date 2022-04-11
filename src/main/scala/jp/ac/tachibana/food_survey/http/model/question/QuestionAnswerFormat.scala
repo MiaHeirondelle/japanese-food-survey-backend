@@ -15,16 +15,16 @@ object QuestionAnswerFormat:
           session_number = sessionNumber.value,
           question_id = questionId.value,
           respondent_id = respondentId.value,
-          value = value.value,
-          comment = comment.value
+          value = value.map(_.value),
+          comment = comment.map(_.value)
         )
       case QuestionAnswer.Repeated(sessionNumber, questionId, respondentId, value, comment, previousQuestionId) =>
         QuestionAnswerFormat.Repeated(
           session_number = sessionNumber.value,
           question_id = questionId.value,
           respondent_id = respondentId.value,
-          value = value.value,
-          comment = comment.value,
+          value = value.map(_.value),
+          comment = comment.map(_.value),
           previous_question_id = previousQuestionId.value
         )
     }
@@ -45,8 +45,8 @@ object QuestionAnswerFormat:
     session_number: Int,
     question_id: String,
     respondent_id: String,
-    value: Int,
-    comment: String)
+    value: Option[Int],
+    comment: Option[String])
       extends QuestionAnswerFormat(QuestionAnswerTypeFormat.Basic)
       derives Encoder.AsObject
 
@@ -54,8 +54,8 @@ object QuestionAnswerFormat:
     session_number: Int,
     question_id: String,
     respondent_id: String,
-    value: Int,
-    comment: String,
+    value: Option[Int],
+    comment: Option[String],
     previous_question_id: String)
       extends QuestionAnswerFormat(QuestionAnswerTypeFormat.Repeated)
       derives Encoder.AsObject

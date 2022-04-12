@@ -8,8 +8,8 @@ sealed trait QuestionAnswer:
   def sessionNumber: Session.Number
   def questionId: Question.Id
   def respondentId: User.Id
-  def value: QuestionAnswer.ScaleValue
-  def comment: QuestionAnswer.Comment
+  def value: Option[QuestionAnswer.ScaleValue]
+  def comment: Option[QuestionAnswer.Comment]
 
 object QuestionAnswer:
 
@@ -38,15 +38,15 @@ object QuestionAnswer:
     sessionNumber: Session.Number,
     questionId: Question.Id,
     respondentId: User.Id,
-    value: QuestionAnswer.ScaleValue,
-    comment: QuestionAnswer.Comment)
+    value: Option[QuestionAnswer.ScaleValue],
+    comment: Option[QuestionAnswer.Comment])
       extends QuestionAnswer
 
   case class Repeated(
     sessionNumber: Session.Number,
     questionId: Question.Id,
     respondentId: User.Id,
-    value: QuestionAnswer.ScaleValue,
-    comment: QuestionAnswer.Comment,
+    value: Option[QuestionAnswer.ScaleValue],
+    comment: Option[QuestionAnswer.Comment],
     previousQuestionId: Question.Id)
       extends QuestionAnswer

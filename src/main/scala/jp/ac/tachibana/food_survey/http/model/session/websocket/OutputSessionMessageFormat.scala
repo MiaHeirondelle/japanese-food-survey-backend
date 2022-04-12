@@ -1,9 +1,8 @@
 package jp.ac.tachibana.food_survey.http.model.session.websocket
 
-import io.circe.Encoder
+import io.circe.{Encoder, JsonObject}
 import io.circe.syntax.*
 import org.http4s.websocket.WebSocketFrame
-
 import jp.ac.tachibana.food_survey.http.model.question.QuestionFormat
 import jp.ac.tachibana.food_survey.http.model.session.{SessionElementFormat, SessionFormat}
 import jp.ac.tachibana.food_survey.http.model.user.UserFormat
@@ -25,6 +24,9 @@ object OutputSessionMessageFormat:
         case tt: OutputSessionMessageFormat.TimerTick =>
           Encoder.AsObject[OutputSessionMessageFormat.TimerTick].encodeObject(tt)
 
+        case OutputSessionMessageFormat.TransitionToNextElement =>
+          JsonObject.empty
+
         case qs: OutputSessionMessageFormat.ElementSelected =>
           Encoder.AsObject[OutputSessionMessageFormat.ElementSelected].encodeObject(qs)
 
@@ -45,6 +47,8 @@ object OutputSessionMessageFormat:
 
   case class TimerTick(time_left_in_ms: Long) extends OutputSessionMessageFormat(OutputSessionMessageTypeFormat.TimerTick)
       derives Encoder.AsObject
+
+  case object TransitionToNextElement extends OutputSessionMessageFormat(OutputSessionMessageTypeFormat.TransitionToNextElement)
 
   case class ElementSelected(
     session: SessionFormat,
@@ -76,6 +80,11 @@ object OutputSessionMessageFormat:
       case OutputSessionMessage.TimerTick(remainingTimeMs) =>
         jsonToSocketFrame(
           OutputSessionMessageFormat.TimerTick(remainingTimeMs)
+        )
+
+      case OutputSessionMessage.TransitionToNextElement =>
+        jsonToSocketFrame(
+          OutputSessionMessageFormat.TransitionToNextElement
         )
 
       case OutputSessionMessage.ElementSelected(session, element) =>

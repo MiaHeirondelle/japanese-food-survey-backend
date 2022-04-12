@@ -9,6 +9,6 @@ object InputSessionMessage:
   case object ReadyForNextElement extends InputSessionMessage
   case class ProvideAnswer(
     questionId: Question.Id,
-    scaleValue: QuestionAnswer.ScaleValue,
-    comment: QuestionAnswer.Comment)
+    scaleValue: Option[QuestionAnswer.ScaleValue],
+    comment: Option[QuestionAnswer.Comment])
       extends InputSessionMessage

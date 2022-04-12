@@ -36,7 +36,8 @@ class DefaultInProgressSessionManager[F[_]: Functor] private (ref: Ref[F, Option
     modifyNonEmpty(state =>
       mapInProgressSession(state)(session =>
         session.currentElement match {
-          case e: SessionElement.Question if e.question.id === answer.questionId =>
+          case e: SessionElement.Question
+              if e.question.id === answer.questionId && session.joinedUsers.exists(_.id === answer.respondentId) =>
             val newSession = session.provideAnswer(answer)
             val newAnswerCount = newSession.answersCount(answer.questionId)
             val newQuestionState = questionElementState(newSession, e)

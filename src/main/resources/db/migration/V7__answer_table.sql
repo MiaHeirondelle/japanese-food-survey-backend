@@ -9,5 +9,7 @@ CREATE TABLE "answer" (
   respondent_id      user_id     NOT NULL REFERENCES "user" (id),
   question_id        question_id NOT NULL REFERENCES "question" (id),
   previous_question_id question_id   NULL REFERENCES "answer" (id),
+  scale_value INT NULL,
+  comment TEXT NULL,
   UNIQUE (respondent_id, question_id, previous_question_id)
 );

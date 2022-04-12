@@ -51,8 +51,8 @@ object Question:
     def toAnswer(
       sessionNumber: Session.Number,
       respondentId: User.Id,
-      value: QuestionAnswer.ScaleValue,
-      comment: QuestionAnswer.Comment): QuestionAnswer =
+      value: Option[QuestionAnswer.ScaleValue],
+      comment: Option[QuestionAnswer.Comment]): QuestionAnswer =
       question match {
         case Question.Basic(id, _, _) =>
           QuestionAnswer.Basic(

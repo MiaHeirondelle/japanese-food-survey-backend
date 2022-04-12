@@ -1,14 +1,15 @@
 package jp.ac.tachibana.food_survey.services.session
 
-import cats.Monad
 import cats.data.{EitherT, NonEmptyList, OptionT}
 import cats.effect.std.Queue
-import cats.effect.{GenConcurrent, Ref}
+import cats.effect.syntax.spawn.*
+import cats.effect.{Fiber, Ref, Temporal}
+import cats.syntax.applicative.*
+import cats.syntax.applicativeError.*
 import cats.syntax.eq.*
 import cats.syntax.flatMap.*
 import cats.syntax.functor.*
 import cats.syntax.traverse.*
-
 import jp.ac.tachibana.food_survey.domain.session.Session
 import jp.ac.tachibana.food_survey.domain.user.User
 import jp.ac.tachibana.food_survey.domain.user.User.Id
@@ -17,12 +18,14 @@ import jp.ac.tachibana.food_survey.services.session.SessionListenerService
 import jp.ac.tachibana.food_survey.services.session.managers.CurrentSessionStateManager
 import jp.ac.tachibana.food_survey.services.session.model.*
 
+import scala.concurrent.duration.{Duration, FiniteDuration}
+
 // todo: fix syntax - context bounds?
 // todo: store users to check rights
-class DefaultSessionListenerService[F[_]](
+class DefaultSessionListenerService[F[_]: Temporal](
   currentSessionStateManager: CurrentSessionStateManager[F],
-  outputsMapRef: Ref[F, Map[User.Id, Queue[F, OutputSessionMessage]]]
-)(implicit F: GenConcurrent[F, ?])
+  ticksRef: Ref[F, List[Fiber[F, Throwable, Unit]]],
+  outputsMapRef: Ref[F, Map[User.Id, Queue[F, OutputSessionMessage]]])
     extends SessionListenerService[F]:
 
   // todo: check session state
@@ -44,8 +47,22 @@ class DefaultSessionListenerService[F[_]](
       .toRight(SessionListenerService.ConnectionError.InvalidSessionState)
       .value
 
+  override def broadcast(message: OutputSessionMessage): F[Unit] =
+    currentSessionStateManager.getCurrentSession.flatMap(_.traverse(broadcastMessage(message))).void
+
+  // todo: fiber stop errors
+  override def tickBroadcast(
+    tick: FiniteDuration,
+    limit: Duration
+  )(createMessage: Duration => OutputSessionMessage): F[Unit] =
+    val task = repeatExecution(tick, limit)(l => broadcast(createMessage(l)))
+    task.start.flatMap(fiber => ticksRef.update(fiber :: _))
+
+  override def stopTicks: F[Unit] =
+    ticksRef.getAndSet(List.empty).flatMap(_.traverse(_.cancel)).void
+
   override def stop: F[Unit] =
-    unregisterListeners
+    stopTicks >> unregisterListeners
 
   private def createOutputStream(
     queue: Queue[F, OutputSessionMessage]): SessionListenerOutput[F] =
@@ -81,11 +98,21 @@ class DefaultSessionListenerService[F[_]](
       _ <- output.traverse(_.offer(message))
     } yield ()
 
+  // todo: on stop callback?
+  private def repeatExecution(
+    tick: FiniteDuration,
+    limit: Duration
+  )(task: Duration => F[Unit]): F[Unit] =
+    if (limit < Duration.Zero)
+      ().pure[F]
+    else
+      task(limit).attempt >> Temporal[F].sleep(tick) >> repeatExecution(tick, limit - tick)(task)
+
 object DefaultSessionListenerService:
 
-  def create[F[_]](
-    currentSessionStateManager: CurrentSessionStateManager[F]
-  )(implicit F: GenConcurrent[F, ?]): F[SessionListenerService[F]] =
+  def create[F[_]: Temporal](
+    currentSessionStateManager: CurrentSessionStateManager[F]): F[SessionListenerService[F]] =
     for {
       outputsMapRef <- Ref.of(Map.empty[User.Id, Queue[F, OutputSessionMessage]])
-    } yield new DefaultSessionListenerService[F](currentSessionStateManager, outputsMapRef)
+      ticksRef <- Ref.of(List.empty[Fiber[F, Throwable, Unit]])
+    } yield new DefaultSessionListenerService[F](currentSessionStateManager, ticksRef, outputsMapRef)

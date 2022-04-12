@@ -2,19 +2,20 @@ package jp.ac.tachibana.food_survey.programs.session
 
 import cats.Monad
 import cats.data.{EitherT, NonEmptyList, OptionT}
+import cats.effect.Concurrent
+import cats.effect.syntax.spawn.*
 import cats.syntax.applicative.*
 import cats.syntax.flatMap.*
 import cats.syntax.functor.*
 import cats.syntax.functorFilter.*
 import cats.syntax.option.*
 import cats.syntax.traverse.*
-
-import jp.ac.tachibana.food_survey.domain.session.Session
+import jp.ac.tachibana.food_survey.domain.session.{Session, SessionElement}
 import jp.ac.tachibana.food_survey.domain.user.User
 import jp.ac.tachibana.food_survey.services.session.model.*
 import jp.ac.tachibana.food_survey.services.session.{SessionListenerService, SessionService}
 
-class DefaultSessionListenerProgram[F[_]: Monad](
+class DefaultSessionListenerProgram[F[_]: Concurrent](
   sessionService: SessionService[F],
   sessionListenerService: SessionListenerService[F])
     extends SessionListenerProgram[F]:
@@ -31,6 +32,8 @@ class DefaultSessionListenerProgram[F[_]: Monad](
   override def stop: F[Unit] =
     sessionListenerService.stop
 
+  // todo: bug when a user refreshes the page and he's immediately ready for the next element
+  // rejoin message that only sent on refresh that doesn't transition if session in progress
   private def processMessage(
     message: InputSessionMessage,
     session: Session,
@@ -59,7 +62,6 @@ class DefaultSessionListenerProgram[F[_]: Monad](
               .fromOption(s.questionById(questionId))
               .flatMap { question =>
                 val answer = question.toAnswer(session.number, user.id, scaleValue, comment)
-                println(answer)
                 EitherT(sessionService.provideAnswer(answer)).toOption
               }
               .flatMap {
@@ -80,10 +82,24 @@ class DefaultSessionListenerProgram[F[_]: Monad](
     elementState: SessionService.SessionElementState): F[Option[OutputSessionMessage]] =
     elementState match {
       case SessionService.SessionElementState.Finished(session) =>
-        // todo: check session only finished once
-        sessionService.finish.as(OutputSessionMessage.SessionFinished(session).some)
+        sessionListenerService.stopTicks >>
+          // todo: check session only finished once
+          sessionService.finish.as(OutputSessionMessage.SessionFinished(session).some)
       case SessionService.SessionElementState.Question(session, state, question) =>
-        OutputSessionMessage.ElementSelected(session, question).some.pure[F]
+        sessionListenerService.stopTicks >>
+          startTimerTicks >>
+          OutputSessionMessage.ElementSelected(session, question).some.pure[F]
       case SessionService.SessionElementState.Transitioning(session) =>
         none[OutputSessionMessage].pure[F]
+    }
+
+  private def startTimerTicks: F[Unit] =
+    import scala.concurrent.duration.*
+    // todo: config
+    sessionListenerService.tickBroadcast(1.second, 10.seconds) {
+      case p: FiniteDuration if p > Duration.Zero =>
+        OutputSessionMessage.TimerTick(p.toMillis)
+
+      case _ =>
+        OutputSessionMessage.TransitionToNextElement
     }

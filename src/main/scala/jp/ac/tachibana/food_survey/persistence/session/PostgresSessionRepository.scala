@@ -110,11 +110,27 @@ class PostgresSessionRepository[F[_]: Async](implicit tr: Transactor[F]) extends
         AnswerId
           .generate[ConnectionIO]
           .map(AnswerPostgresFormat.fromDomain(_, answer) match {
-            case AnswerPostgresFormat(id, answerType, sessionNumber, respondentId, questionId, previousQuestionId) =>
-              (id, answerType, sessionNumber, respondentId, questionId, previousQuestionId)
+            case AnswerPostgresFormat(
+                  id,
+                  answerType,
+                  sessionNumber,
+                  respondentId,
+                  questionId,
+                  previousQuestionId,
+                  scaleValue,
+                  comment) =>
+              (id, answerType, sessionNumber, respondentId, questionId, previousQuestionId, scaleValue, comment)
           }))
-      result <- Update[(AnswerId, AnswerPostgresFormat.Type, Session.Number, User.Id, Question.Id, Option[Question.Id])](
-        """INSERT INTO "answer" (id, type, session_number, respondent_id, question_id, previous_question_id) VALUES (?, ?, ?, ?, ?, ?)""")
+      result <- Update[(
+        AnswerId,
+        AnswerPostgresFormat.Type,
+        Session.Number,
+        User.Id,
+        Question.Id,
+        Option[Question.Id],
+        Option[QuestionAnswer.ScaleValue],
+        Option[QuestionAnswer.Comment])](
+        """INSERT INTO "answer" (id, type, session_number, respondent_id, question_id, previous_question_id, scale_value, comment) VALUES (?, ?, ?, ?, ?, ?, ?, ?)""")
         .updateMany(data)
     } yield result
 

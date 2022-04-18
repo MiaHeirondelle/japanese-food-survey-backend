@@ -39,7 +39,6 @@ class DefaultInProgressSessionManager[F[_]: Functor] private (ref: Ref[F, Option
           case e: SessionElement.Question
               if e.question.id === answer.questionId && session.joinedUsers.exists(_.id === answer.respondentId) =>
             val newSession = session.provideAnswer(answer)
-            val newAnswerCount = newSession.answersCount(answer.questionId)
             val newQuestionState = questionElementState(newSession, e)
 
             (state.copy(session = newSession).some, newQuestionState.asRight)

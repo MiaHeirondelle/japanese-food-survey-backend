@@ -49,15 +49,15 @@ trait SessionInstances:
     pgEnumStringOpt(
       "session_element_type",
       {
-        case "question" => Some(SessionElementPostgresFormat.Type.Question)
-        case "review"   => Some(SessionElementPostgresFormat.Type.Review)
-        case "text"     => Some(SessionElementPostgresFormat.Type.Text)
-        case _          => None
+        case "question"        => Some(SessionElementPostgresFormat.Type.Question)
+        case "question_review" => Some(SessionElementPostgresFormat.Type.QuestionReview)
+        case "text"            => Some(SessionElementPostgresFormat.Type.Text)
+        case _                 => None
       },
       {
-        case SessionElementPostgresFormat.Type.Question => "question"
-        case SessionElementPostgresFormat.Type.Review   => "review"
-        case SessionElementPostgresFormat.Type.Text     => "text"
+        case SessionElementPostgresFormat.Type.Question       => "question"
+        case SessionElementPostgresFormat.Type.QuestionReview => "question_review"
+        case SessionElementPostgresFormat.Type.Text           => "text"
       }
     )
 
@@ -94,6 +94,9 @@ trait SessionInstances:
       .map {
         case (number, SessionElementPostgresFormat.Type.Question, Some(questionId), showDurationSeconds) =>
           SessionElementPostgresFormat.Question(number, questionId, showDurationSeconds.seconds)
+
+        case (number, SessionElementPostgresFormat.Type.QuestionReview, Some(questionId), showDurationSeconds) =>
+          SessionElementPostgresFormat.QuestionReview(number, questionId, showDurationSeconds.seconds)
 
         case (number, _, _, _) =>
           throw new Exception(show"Invalid session element: $number")
@@ -199,5 +202,11 @@ object SessionInstances extends SessionInstances:
       showDuration: FiniteDuration)
         extends SessionElementPostgresFormat(SessionElementPostgresFormat.Type.Question)
 
+    case class QuestionReview(
+      number: SessionElement.Number,
+      questionId: SessionQuestion.Id,
+      showDuration: FiniteDuration)
+        extends SessionElementPostgresFormat(SessionElementPostgresFormat.Type.QuestionReview)
+
     enum Type:
-      case Question, Review, Text
+      case Question, QuestionReview, Text

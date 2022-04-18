@@ -1,5 +1,6 @@
 package jp.ac.tachibana.food_survey.services.session.model
 
+import jp.ac.tachibana.food_survey.domain.question.{Question, QuestionAnswer}
 import jp.ac.tachibana.food_survey.domain.session.{Session, SessionElement}
 import jp.ac.tachibana.food_survey.domain.user.User
 
@@ -13,9 +14,11 @@ object OutputSessionMessage:
 
   case class SessionBegan(session: Session.InProgress) extends OutputSessionMessage
 
-  case class ElementSelected(
-    session: Session.InProgress,
-    element: SessionElement)
+  case class QuestionSelected(element: SessionElement.Question) extends OutputSessionMessage
+
+  case class BasicQuestionReviewSelected(
+    element: SessionElement.QuestionReview.Basic,
+    answers: List[QuestionAnswer.Basic])
       extends OutputSessionMessage
 
   case class TimerTick(remainingTimeMs: Long) extends OutputSessionMessage

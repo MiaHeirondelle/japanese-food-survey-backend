@@ -101,9 +101,12 @@ object Session:
 
       def questionById(questionId: Question.Id): Option[Question] =
         session.template.elements.toVector.collectFirst {
-          case SessionElement.Question(number, question, showDuration) if question.id === questionId =>
-            question
+          case e: SessionElement.Question if e.question.id === questionId =>
+            e.question
         }
+
+      def allAnswersForQuestion(questionId: Question.Id): List[QuestionAnswer] =
+        session.answers.allAnswersForQuestion(questionId)
 
       def provideAnswer(answer: QuestionAnswer): Session.InProgress =
         session.copy(answers = session.answers.provideAnswer(answer))

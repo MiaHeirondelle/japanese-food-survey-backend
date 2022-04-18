@@ -10,6 +10,7 @@ import cats.syntax.functor.*
 import cats.syntax.functorFilter.*
 import cats.syntax.option.*
 import cats.syntax.traverse.*
+import jp.ac.tachibana.food_survey.domain.question.{Question, QuestionAnswer}
 import jp.ac.tachibana.food_survey.domain.session.{Session, SessionElement}
 import jp.ac.tachibana.food_survey.domain.user.User
 import jp.ac.tachibana.food_survey.services.session.model.*
@@ -87,19 +88,37 @@ class DefaultSessionListenerProgram[F[_]: Concurrent](
           sessionService.finish.as(OutputSessionMessage.SessionFinished(session).some)
       case SessionService.SessionElementState.Question(session, state, question) =>
         sessionListenerService.stopTicks >>
-          startTimerTicks >>
-          OutputSessionMessage.ElementSelected(session, question).some.pure[F]
+          startSessionElementTimerTicks(question) >>
+          OutputSessionMessage.QuestionSelected(question).some.pure[F]
+      case SessionService.SessionElementState.QuestionReview(session, questionReview) =>
+        startSessionElementTimerTicks(questionReview) >>
+          questionReviewElementSelectedMessage(session, questionReview).some.pure[F]
       case SessionService.SessionElementState.Transitioning(session) =>
         none[OutputSessionMessage].pure[F]
     }
 
-  private def startTimerTicks: F[Unit] =
+  private def startSessionElementTimerTicks(element: SessionElement): F[Unit] =
     import scala.concurrent.duration.*
-    // todo: config
-    sessionListenerService.tickBroadcast(1.second, 10.seconds) {
+    sessionListenerService.tickBroadcast(1.second, element.showDuration) {
       case p: FiniteDuration if p > Duration.Zero =>
         OutputSessionMessage.TimerTick(p.toMillis)
 
       case _ =>
         OutputSessionMessage.TransitionToNextElement
+    }
+
+  private def questionElementSelectedMessage(question: SessionElement.Question): OutputSessionMessage =
+    OutputSessionMessage.QuestionSelected(question)
+
+  private def questionReviewElementSelectedMessage(
+    session: Session.InProgress,
+    questionReview: SessionElement.QuestionReview): OutputSessionMessage =
+    questionReview match {
+      case e: SessionElement.QuestionReview.Basic =>
+        // todo: comment about answers
+        val answers = session.allAnswersForQuestion(e.question.id).collect { case a: QuestionAnswer.Basic => a }
+        OutputSessionMessage.BasicQuestionReviewSelected(e, answers)
+
+      case e =>
+        ???
     }

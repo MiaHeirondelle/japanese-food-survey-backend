@@ -43,7 +43,7 @@ class DefaultInProgressSessionManager[F[_]: Functor] private (ref: Ref[F, Option
             val newQuestionState = questionElementState(newSession, e)
 
             (state.copy(session = newSession).some, newQuestionState.asRight)
-          case e: SessionElement.Question =>
+          case _: SessionElement.Question | _: SessionElement.QuestionReview =>
             errorStateTransformationResult(state)
         }))
 
@@ -153,6 +153,9 @@ object DefaultInProgressSessionManager:
     session.currentElement match {
       case e: SessionElement.Question =>
         SessionService.SessionElementState.Question(session, SessionService.QuestionState.Pending, e)
+
+      case e: SessionElement.QuestionReview =>
+        SessionService.SessionElementState.QuestionReview(session, e)
     }
 
   private def questionElementState(

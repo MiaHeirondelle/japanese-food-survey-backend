@@ -8,6 +8,7 @@ import cats.{Order, Show}
 import jp.ac.tachibana.food_survey.domain.question.Question as SessionQuestion
 
 sealed trait SessionElement:
+  def number: SessionElement.Number
   def showDuration: FiniteDuration
 
 object SessionElement:
@@ -31,8 +32,37 @@ object SessionElement:
     def apply(number: Int): SessionElement.Number = number
 
   // case class Text(title: String, text: String) extends SessionElement
-  case class Question(
-    number: SessionElement.Number,
-    question: SessionQuestion,
-    showDuration: FiniteDuration)
-      extends SessionElement
+
+  sealed trait Question extends SessionElement:
+    def question: SessionQuestion
+
+  object Question:
+
+    case class Basic(
+      number: SessionElement.Number,
+      question: SessionQuestion.Basic,
+      showDuration: FiniteDuration)
+        extends SessionElement.Question
+
+    case class Repeated(
+      number: SessionElement.Number,
+      question: SessionQuestion.Repeated,
+      showDuration: FiniteDuration)
+        extends SessionElement.Question
+
+  sealed trait QuestionReview extends SessionElement:
+    def question: SessionQuestion
+
+  object QuestionReview:
+
+    case class Basic(
+      number: SessionElement.Number,
+      question: SessionQuestion.Basic,
+      showDuration: FiniteDuration)
+        extends SessionElement.QuestionReview
+
+    case class Repeated(
+      number: SessionElement.Number,
+      question: SessionQuestion.Repeated,
+      showDuration: FiniteDuration)
+        extends SessionElement.QuestionReview

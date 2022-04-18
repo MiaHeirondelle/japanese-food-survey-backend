@@ -23,6 +23,9 @@ class SessionAnswers private (
   def isQuestionAnswered(questionId: Question.Id): Boolean =
     answers.get(questionId).exists(_.length === respondentsCount)
 
+  def allAnswersForQuestion(questionId: Question.Id): List[QuestionAnswer] =
+    answers.get(questionId).toList.flatMap(_.toSortedMap.values.toList)
+
   def isQuestionAnsweredBy(
     questionId: Question.Id,
     respondentId: User.Id): Boolean =

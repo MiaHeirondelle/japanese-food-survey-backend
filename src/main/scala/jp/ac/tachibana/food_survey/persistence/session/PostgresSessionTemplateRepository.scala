@@ -52,13 +52,21 @@ class PostgresSessionTemplateRepository[F[_]: Async](implicit tr: Transactor[F])
     elements: NonEmptyVector[SessionElementPostgresFormat],
     questions: Map[Question.Id, Question]): NonEmptyVector[SessionElement] =
     // todo: question error?
-    elements.map { case SessionElementPostgresFormat.Question(number, questionId, showDuration) =>
-      val question = questions(questionId)
-      question match {
-        case q: Question.Basic =>
-          SessionElement.Question.Basic(number, q, showDuration)
+    elements.map {
+      case SessionElementPostgresFormat.Question(number, questionId, showDuration) =>
+        questions(questionId) match {
+          case q: Question.Basic =>
+            SessionElement.Question.Basic(number, q, showDuration)
 
-        case q: Question.Repeated =>
-          SessionElement.Question.Repeated(number, q, showDuration)
-      }
+          case q: Question.Repeated =>
+            SessionElement.Question.Repeated(number, q, showDuration)
+        }
+      case SessionElementPostgresFormat.QuestionReview(number, questionId, showDuration) =>
+        questions(questionId) match {
+          case q: Question.Basic =>
+            SessionElement.QuestionReview.Basic(number, q, showDuration)
+
+          case q: Question.Repeated =>
+            SessionElement.QuestionReview.Repeated(number, q, showDuration)
+        }
     }

@@ -1,4 +1,4 @@
-CREATE TYPE session_element_type AS ENUM ('question', 'review', 'text');
+CREATE TYPE session_element_type AS ENUM ('question', 'question_review', 'text');
 
 CREATE TABLE "session_template_element" (
   element_number INT NOT NULL PRIMARY KEY,

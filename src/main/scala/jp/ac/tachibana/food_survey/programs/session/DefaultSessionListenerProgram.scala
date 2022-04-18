@@ -16,6 +16,8 @@ import jp.ac.tachibana.food_survey.domain.user.User
 import jp.ac.tachibana.food_survey.services.session.model.*
 import jp.ac.tachibana.food_survey.services.session.{SessionListenerService, SessionService}
 
+import scala.concurrent.duration.*
+
 class DefaultSessionListenerProgram[F[_]: Concurrent](
   sessionService: SessionService[F],
   sessionListenerService: SessionListenerService[F])
@@ -67,7 +69,8 @@ class DefaultSessionListenerProgram[F[_]: Concurrent](
               }
               .flatMap {
                 case SessionService.SessionElementState.Question(_, SessionService.QuestionState.Finished, _) =>
-                  EitherT(sessionService.transitionToNextElement).toOption.flatMapF(processTransitionToNextElementResult)
+                  EitherT(sessionService.transitionToNextElement).toOption.semiflatMap(
+                    processTransitionToNextElementNonPendingResult)
 
                 case SessionService.SessionElementState.Question(_, SessionService.QuestionState.Pending, _) =>
                   OptionT.none
@@ -79,27 +82,33 @@ class DefaultSessionListenerProgram[F[_]: Concurrent](
         }
     }
 
-  private def processTransitionToNextElementResult(
-    elementState: SessionService.SessionElementState): F[Option[OutputSessionMessage]] =
-    elementState match {
-      case SessionService.SessionElementState.Finished(session) =>
-        sessionListenerService.stopTicks >>
+  private def processTransitionToNextElementNonPendingResult(
+    elementState: SessionService.NonPendingSessionElementState): F[OutputSessionMessage] =
+    sessionListenerService.stopTicks >>
+      (elementState match {
+        case SessionService.SessionElementState.Finished(session) =>
           // todo: check session only finished once
-          sessionService.finish.as(OutputSessionMessage.SessionFinished(session).some)
-      case SessionService.SessionElementState.Question(session, state, question) =>
-        sessionListenerService.stopTicks >>
-          startSessionElementTimerTicks(question) >>
-          OutputSessionMessage.QuestionSelected(question).some.pure[F]
-      case SessionService.SessionElementState.QuestionReview(session, questionReview) =>
-        startSessionElementTimerTicks(questionReview) >>
-          questionReviewElementSelectedMessage(session, questionReview).some.pure[F]
-      case SessionService.SessionElementState.Transitioning(session) =>
-        none[OutputSessionMessage].pure[F]
+          sessionService.finish.as(OutputSessionMessage.SessionFinished(session))
+        case SessionService.SessionElementState.Question(session, state, question) =>
+          startSessionElementTimerTicks(question.showDuration)
+            .as(questionElementSelectedMessage(question))
+        case SessionService.SessionElementState.QuestionReview(session, questionReview) =>
+          startSessionElementTimerTicks(questionReview.showDuration)
+            .as(questionReviewElementSelectedMessage(session, questionReview))
+      })
+
+  private def processTransitionToNextElementResult(
+    element: SessionService.SessionElementState): F[Option[OutputSessionMessage]] =
+    element match {
+      case e: SessionService.NonPendingSessionElementState =>
+        processTransitionToNextElementNonPendingResult(e).map(_.some)
+
+      case _: SessionService.SessionElementState.Transitioning =>
+        none.pure[F]
     }
 
-  private def startSessionElementTimerTicks(element: SessionElement): F[Unit] =
-    import scala.concurrent.duration.*
-    sessionListenerService.tickBroadcast(1.second, element.showDuration) {
+  private def startSessionElementTimerTicks(duration: FiniteDuration): F[Unit] =
+    sessionListenerService.tickBroadcast(1.second, duration) {
       case p: FiniteDuration if p > Duration.Zero =>
         OutputSessionMessage.TimerTick(p.toMillis)
 

@@ -3,7 +3,7 @@ package jp.ac.tachibana.food_survey.http.model.session.websocket
 import io.circe.{Encoder, JsonObject}
 import io.circe.syntax.*
 import org.http4s.websocket.WebSocketFrame
-import jp.ac.tachibana.food_survey.http.model.question.QuestionFormat
+import jp.ac.tachibana.food_survey.http.model.question.{QuestionAnswerFormat, QuestionFormat}
 import jp.ac.tachibana.food_survey.http.model.session.{SessionElementFormat, SessionFormat}
 import jp.ac.tachibana.food_survey.http.model.user.UserFormat
 import jp.ac.tachibana.food_survey.services.session.model.*
@@ -27,8 +27,11 @@ object OutputSessionMessageFormat:
         case OutputSessionMessageFormat.TransitionToNextElement =>
           JsonObject.empty
 
-        case qs: OutputSessionMessageFormat.ElementSelected =>
-          Encoder.AsObject[OutputSessionMessageFormat.ElementSelected].encodeObject(qs)
+        case qs: OutputSessionMessageFormat.QuestionSelected =>
+          Encoder.AsObject[OutputSessionMessageFormat.QuestionSelected].encodeObject(qs)
+
+        case bqr: OutputSessionMessageFormat.BasicQuestionReviewSelected =>
+          Encoder.AsObject[OutputSessionMessageFormat.BasicQuestionReviewSelected].encodeObject(bqr)
 
         case sf: OutputSessionMessageFormat.SessionFinished =>
           Encoder.AsObject[OutputSessionMessageFormat.SessionFinished].encodeObject(sf)
@@ -50,10 +53,15 @@ object OutputSessionMessageFormat:
 
   case object TransitionToNextElement extends OutputSessionMessageFormat(OutputSessionMessageTypeFormat.TransitionToNextElement)
 
-  case class ElementSelected(
-    session: SessionFormat,
+  case class QuestionSelected(
     element: SessionElementFormat)
-      extends OutputSessionMessageFormat(OutputSessionMessageTypeFormat.ElementSelected)
+      extends OutputSessionMessageFormat(OutputSessionMessageTypeFormat.QuestionSelected)
+      derives Encoder.AsObject
+
+  case class BasicQuestionReviewSelected(
+    element: SessionElementFormat,
+    answers: List[QuestionAnswerFormat])
+      extends OutputSessionMessageFormat(OutputSessionMessageTypeFormat.BasicQuestionReviewSelected)
       derives Encoder.AsObject
 
   case class SessionFinished(
@@ -87,11 +95,18 @@ object OutputSessionMessageFormat:
           OutputSessionMessageFormat.TransitionToNextElement
         )
 
-      case OutputSessionMessage.ElementSelected(session, element) =>
+      case OutputSessionMessage.QuestionSelected(element) =>
         jsonToSocketFrame(
-          OutputSessionMessageFormat.ElementSelected(
-            SessionFormat.fromDomain(session),
+          OutputSessionMessageFormat.QuestionSelected(
             SessionElementFormat.fromDomain(element)
+          )
+        )
+
+      case OutputSessionMessage.BasicQuestionReviewSelected(element, answers) =>
+        jsonToSocketFrame(
+          OutputSessionMessageFormat.BasicQuestionReviewSelected(
+            SessionElementFormat.fromDomain(element),
+            answers.map(QuestionAnswerFormat.fromDomain)
           )
         )
 

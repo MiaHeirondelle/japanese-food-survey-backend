@@ -53,5 +53,12 @@ class PostgresSessionTemplateRepository[F[_]: Async](implicit tr: Transactor[F])
     questions: Map[Question.Id, Question]): NonEmptyVector[SessionElement] =
     // todo: question error?
     elements.map { case SessionElementPostgresFormat.Question(number, questionId, showDuration) =>
-      SessionElement.Question(number, questions(questionId), showDuration)
+      val question = questions(questionId)
+      question match {
+        case q: Question.Basic =>
+          SessionElement.Question.Basic(number, q, showDuration)
+
+        case q: Question.Repeated =>
+          SessionElement.Question.Repeated(number, q, showDuration)
+      }
     }

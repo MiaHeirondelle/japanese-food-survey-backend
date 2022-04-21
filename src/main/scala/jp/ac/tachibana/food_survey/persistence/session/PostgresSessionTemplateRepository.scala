@@ -67,6 +67,6 @@ class PostgresSessionTemplateRepository[F[_]: Async](implicit tr: Transactor[F])
             SessionElement.QuestionReview.Basic(number, q, showDuration)
 
           case q: Question.Repeated =>
-            SessionElement.QuestionReview.Repeated(number, q, showDuration)
+            SessionElement.QuestionReview.Repeated(number, q, questions(q.previousQuestionId), showDuration)
         }
     }

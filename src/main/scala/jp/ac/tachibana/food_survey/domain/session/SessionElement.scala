@@ -65,5 +65,6 @@ object SessionElement:
     case class Repeated(
       number: SessionElement.Number,
       question: SessionQuestion.Repeated,
+      previousQuestion: SessionQuestion,
       showDuration: FiniteDuration)
         extends SessionElement.QuestionReview

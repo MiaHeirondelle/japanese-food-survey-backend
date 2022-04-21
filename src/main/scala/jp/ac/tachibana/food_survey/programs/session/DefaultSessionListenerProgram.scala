@@ -180,8 +180,11 @@ class DefaultSessionListenerProgram[F[_]: Concurrent](
         val answers = session.allAnswersForQuestion(e.question.id).collect { case a: QuestionAnswer.Basic => a }
         OutputSessionMessage.BasicQuestionReviewSelected(e, answers)
 
-      case e =>
-        ???
+      case e: SessionElement.QuestionReview.Repeated =>
+        // todo: comment about answers
+        val answers = session.allAnswersForQuestion(e.question.id).collect { case a: QuestionAnswer.Repeated => a }
+        val previousAnswers = session.allAnswersForQuestion(e.previousQuestion.id)
+        OutputSessionMessage.RepeatedQuestionReviewSelected(e, answers, previousAnswers)
     }
 
   private def elementSelectedMessage(session: Session.InProgress): OutputSessionMessage =

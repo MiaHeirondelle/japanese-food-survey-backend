@@ -33,6 +33,9 @@ object OutputSessionMessageFormat:
         case bqr: OutputSessionMessageFormat.BasicQuestionReviewSelected =>
           Encoder.AsObject[OutputSessionMessageFormat.BasicQuestionReviewSelected].encodeObject(bqr)
 
+        case bqr: OutputSessionMessageFormat.RepeatedQuestionReviewSelected =>
+          Encoder.AsObject[OutputSessionMessageFormat.RepeatedQuestionReviewSelected].encodeObject(bqr)
+
         case sf: OutputSessionMessageFormat.SessionFinished =>
           Encoder.AsObject[OutputSessionMessageFormat.SessionFinished].encodeObject(sf)
       }
@@ -66,6 +69,13 @@ object OutputSessionMessageFormat:
     element: SessionElementFormat,
     answers: List[QuestionAnswerFormat])
       extends OutputSessionMessageFormat(OutputSessionMessageTypeFormat.BasicQuestionReviewSelected)
+      derives Encoder.AsObject
+
+  case class RepeatedQuestionReviewSelected(
+    element: SessionElementFormat,
+    answers: List[QuestionAnswerFormat],
+    previous_answers: List[QuestionAnswerFormat])
+      extends OutputSessionMessageFormat(OutputSessionMessageTypeFormat.RepeatedQuestionReviewSelected)
       derives Encoder.AsObject
 
   case class SessionFinished(
@@ -114,6 +124,15 @@ object OutputSessionMessageFormat:
           OutputSessionMessageFormat.BasicQuestionReviewSelected(
             SessionElementFormat.fromDomain(element),
             answers.map(QuestionAnswerFormat.fromDomain)
+          )
+        )
+
+      case OutputSessionMessage.RepeatedQuestionReviewSelected(element, answers, previousAnswers) =>
+        jsonToSocketFrame(
+          OutputSessionMessageFormat.RepeatedQuestionReviewSelected(
+            SessionElementFormat.fromDomain(element),
+            answers.map(QuestionAnswerFormat.fromDomain),
+            previousAnswers.map(QuestionAnswerFormat.fromDomain)
           )
         )
 

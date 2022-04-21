@@ -26,6 +26,12 @@ object OutputSessionMessage:
     answers: List[QuestionAnswer.Basic])
       extends OutputSessionMessage
 
+  case class RepeatedQuestionReviewSelected(
+    element: SessionElement.QuestionReview.Repeated,
+    answers: List[QuestionAnswer.Repeated],
+    previousAnswers: List[QuestionAnswer])
+      extends OutputSessionMessage
+
   case class TimerTick(remainingTimeMs: Long) extends OutputSessionMessage
 
   case class SessionFinished(session: Session.Finished) extends OutputSessionMessage

@@ -47,21 +47,36 @@ class DefaultSessionListenerProgram[F[_]: Concurrent](
           .map[OutputSessionMessage](OutputSessionMessage.SessionBegan.apply)
           .value
       case InputSessionMessage.ReadyToProceed =>
-        EitherT(sessionService.getCurrentElementState).toOption.flatMapF {
-          case _: SessionService.SessionElementState.BeforeFirstElement =>
-            EitherT(sessionService.transitionToFirstElement(user.id)).toOption
-              .flatMapF(processTransitionToFirstElementResult)
-              .value
+        user match {
+          case _: User.Admin =>
+            EitherT(sessionService.getCurrentElementState).toOption.map {
+              case s: SessionService.SessionElementState.Finished =>
+                OutputSessionMessage.SessionFinished(s.session)
+              case s: SessionService.SessionElementState.Question =>
+                elementSelectedMessage(s.session)
+              case s: SessionService.SessionElementState.QuestionReview =>
+                elementSelectedMessage(s.session)
+              case s: SessionService.SessionElementState.BeforeFirstElement =>
+                elementSelectedMessage(s.session)
+            }.value
 
-          case state: SessionService.NonPendingSessionElementState =>
-            state.session match {
-              case s: Session.InProgress =>
-                elementSelectedMessage(s).some.pure[F]
+          case _: User.Respondent =>
+            EitherT(sessionService.getCurrentElementState).toOption.flatMapF {
+              case _: SessionService.SessionElementState.BeforeFirstElement =>
+                EitherT(sessionService.transitionToFirstElement(user.id)).toOption
+                  .flatMapF(processElementState)
+                  .value
 
-              case s: Session.Finished =>
-                OutputSessionMessage.SessionFinished(s).some.pure[F]
-            }
-        }.value
+              case state: SessionService.NonPendingSessionElementState =>
+                state.session match {
+                  case s: Session.InProgress =>
+                    elementSelectedMessage(s).some.pure[F]
+
+                  case s: Session.Finished =>
+                    OutputSessionMessage.SessionFinished(s).some.pure[F]
+                }
+            }.value
+        }
       case InputSessionMessage.ProvideIntermediateAnswer(questionId, scaleValue, comment) =>
         session match {
           case s: Session.InProgress =>
@@ -103,20 +118,17 @@ class DefaultSessionListenerProgram[F[_]: Concurrent](
 
   private def proceedToNextElement: F[Option[OutputSessionMessage]] =
     EitherT(sessionService.transitionToNextElement).toOption
-      .semiflatMap(processTransitionToNextElementNonPendingResult)
+      .semiflatMap(processNonPendingElementState)
       .value
 
   private def forceProceedToNextElement: F[Option[OutputSessionMessage]] =
     EitherT(sessionService.transitionToNextElement).toOption
-      .semiflatMap(state => sessionListenerService.stopTick >> processTransitionToNextElementNonPendingResult(state))
+      .semiflatMap(state => sessionListenerService.stopTick >> processNonPendingElementState(state))
       .value
 
-  private def processTransitionToNextElementNonPendingResult(
-    elementState: SessionService.NonPendingSessionElementState): F[OutputSessionMessage] =
-    println("here")
-    elementState match {
+  private def processNonPendingElementState(state: SessionService.NonPendingSessionElementState): F[OutputSessionMessage] =
+    state match {
       case SessionService.SessionElementState.Finished(session) =>
-        println("there")
         // todo: check session only finished once
         sessionService.finish.as(OutputSessionMessage.SessionFinished(session))
       case SessionService.SessionElementState.Question(session, state, question) =>
@@ -127,11 +139,10 @@ class DefaultSessionListenerProgram[F[_]: Concurrent](
           .as(questionReviewElementSelectedMessage(session, questionReview))
     }
 
-  private def processTransitionToFirstElementResult(
-    element: SessionService.SessionElementState): F[Option[OutputSessionMessage]] =
-    element match {
+  private def processElementState(state: SessionService.SessionElementState): F[Option[OutputSessionMessage]] =
+    state match {
       case e: SessionService.NonPendingSessionElementState =>
-        processTransitionToNextElementNonPendingResult(e).map(_.some)
+        processNonPendingElementState(e).map(_.some)
 
       case _: SessionService.SessionElementState.BeforeFirstElement =>
         none.pure[F]

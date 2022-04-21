@@ -91,7 +91,7 @@ class DefaultSessionListenerProgram[F[_]: Concurrent](
           sessionService.finish.as(OutputSessionMessage.SessionFinished(session))
         case SessionService.SessionElementState.Question(session, state, question) =>
           startSessionElementTimerTicks(question.showDuration)
-            .as(questionElementSelectedMessage(question))
+            .as(questionElementSelectedMessage(session, question))
         case SessionService.SessionElementState.QuestionReview(session, questionReview) =>
           startSessionElementTimerTicks(questionReview.showDuration)
             .as(questionReviewElementSelectedMessage(session, questionReview))
@@ -116,8 +116,16 @@ class DefaultSessionListenerProgram[F[_]: Concurrent](
         OutputSessionMessage.TransitionToNextElement
     }
 
-  private def questionElementSelectedMessage(question: SessionElement.Question): OutputSessionMessage =
-    OutputSessionMessage.QuestionSelected(question)
+  private def questionElementSelectedMessage(
+    session: Session.InProgress,
+    question: SessionElement.Question): OutputSessionMessage =
+    question match {
+      case e: SessionElement.Question.Basic =>
+        OutputSessionMessage.BasicQuestionSelected(e)
+
+      case e: SessionElement.Question.Repeated =>
+        OutputSessionMessage.RepeatedQuestionSelected(e, session.allAnswersForQuestion(e.previousQuestion.id))
+    }
 
   private def questionReviewElementSelectedMessage(
     session: Session.InProgress,

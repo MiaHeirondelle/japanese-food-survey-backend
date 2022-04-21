@@ -24,12 +24,14 @@ object SessionElementFormat:
       case SessionElement.Question.Basic(number, question, _) =>
         SessionElementFormat.Question(
           number = number.value,
-          question = QuestionFormat.fromDomain(question)
+          question = QuestionFormat.fromDomain(question),
+          previous_question = None
         )
-      case SessionElement.Question.Repeated(number, question, _) =>
+      case SessionElement.Question.Repeated(number, question, previousQuestion, _) =>
         SessionElementFormat.Question(
           number = number.value,
-          question = QuestionFormat.fromDomain(question)
+          question = QuestionFormat.fromDomain(question),
+          previous_question = Some(QuestionFormat.fromDomain(previousQuestion))
         )
     }
 
@@ -57,7 +59,8 @@ object SessionElementFormat:
 
   private case class Question(
     number: Int,
-    question: QuestionFormat)
+    question: QuestionFormat,
+    previous_question: Option[QuestionFormat])
       extends SessionElementFormat(SessionElementTypeFormat.Question)
       derives Encoder.AsObject
 

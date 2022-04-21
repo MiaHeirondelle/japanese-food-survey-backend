@@ -27,8 +27,11 @@ object OutputSessionMessageFormat:
         case OutputSessionMessageFormat.TransitionToNextElement =>
           JsonObject.empty
 
-        case qs: OutputSessionMessageFormat.QuestionSelected =>
-          Encoder.AsObject[OutputSessionMessageFormat.QuestionSelected].encodeObject(qs)
+        case bqs: OutputSessionMessageFormat.BasicQuestionSelected =>
+          Encoder.AsObject[OutputSessionMessageFormat.BasicQuestionSelected].encodeObject(bqs)
+
+        case rqs: OutputSessionMessageFormat.RepeatedQuestionSelected =>
+          Encoder.AsObject[OutputSessionMessageFormat.RepeatedQuestionSelected].encodeObject(rqs)
 
         case bqr: OutputSessionMessageFormat.BasicQuestionReviewSelected =>
           Encoder.AsObject[OutputSessionMessageFormat.BasicQuestionReviewSelected].encodeObject(bqr)
@@ -53,9 +56,15 @@ object OutputSessionMessageFormat:
 
   case object TransitionToNextElement extends OutputSessionMessageFormat(OutputSessionMessageTypeFormat.TransitionToNextElement)
 
-  case class QuestionSelected(
+  case class BasicQuestionSelected(
     element: SessionElementFormat)
-      extends OutputSessionMessageFormat(OutputSessionMessageTypeFormat.QuestionSelected)
+      extends OutputSessionMessageFormat(OutputSessionMessageTypeFormat.BasicQuestionSelected)
+      derives Encoder.AsObject
+
+  case class RepeatedQuestionSelected(
+    element: SessionElementFormat,
+    previous_answers: List[QuestionAnswerFormat])
+      extends OutputSessionMessageFormat(OutputSessionMessageTypeFormat.RepeatedQuestionSelected)
       derives Encoder.AsObject
 
   case class BasicQuestionReviewSelected(
@@ -95,10 +104,18 @@ object OutputSessionMessageFormat:
           OutputSessionMessageFormat.TransitionToNextElement
         )
 
-      case OutputSessionMessage.QuestionSelected(element) =>
+      case OutputSessionMessage.BasicQuestionSelected(element) =>
         jsonToSocketFrame(
-          OutputSessionMessageFormat.QuestionSelected(
+          OutputSessionMessageFormat.BasicQuestionSelected(
             SessionElementFormat.fromDomain(element)
+          )
+        )
+
+      case OutputSessionMessage.RepeatedQuestionSelected(element, previousAnswers) =>
+        jsonToSocketFrame(
+          OutputSessionMessageFormat.RepeatedQuestionSelected(
+            SessionElementFormat.fromDomain(element),
+            previousAnswers.map(QuestionAnswerFormat.fromDomain)
           )
         )
 

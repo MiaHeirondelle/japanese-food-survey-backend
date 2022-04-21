@@ -24,9 +24,6 @@ object OutputSessionMessageFormat:
         case tt: OutputSessionMessageFormat.TimerTick =>
           Encoder.AsObject[OutputSessionMessageFormat.TimerTick].encodeObject(tt)
 
-        case OutputSessionMessageFormat.TransitionToNextElement =>
-          JsonObject.empty
-
         case bqs: OutputSessionMessageFormat.BasicQuestionSelected =>
           Encoder.AsObject[OutputSessionMessageFormat.BasicQuestionSelected].encodeObject(bqs)
 
@@ -53,8 +50,6 @@ object OutputSessionMessageFormat:
 
   case class TimerTick(time_left_in_ms: Long) extends OutputSessionMessageFormat(OutputSessionMessageTypeFormat.TimerTick)
       derives Encoder.AsObject
-
-  case object TransitionToNextElement extends OutputSessionMessageFormat(OutputSessionMessageTypeFormat.TransitionToNextElement)
 
   case class BasicQuestionSelected(
     element: SessionElementFormat)
@@ -97,11 +92,6 @@ object OutputSessionMessageFormat:
       case OutputSessionMessage.TimerTick(remainingTimeMs) =>
         jsonToSocketFrame(
           OutputSessionMessageFormat.TimerTick(remainingTimeMs)
-        )
-
-      case OutputSessionMessage.TransitionToNextElement =>
-        jsonToSocketFrame(
-          OutputSessionMessageFormat.TransitionToNextElement
         )
 
       case OutputSessionMessage.BasicQuestionSelected(element) =>

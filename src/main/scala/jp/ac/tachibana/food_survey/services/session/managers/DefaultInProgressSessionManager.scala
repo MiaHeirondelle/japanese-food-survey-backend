@@ -22,7 +22,7 @@ class DefaultInProgressSessionManager[F[_]: Functor] private (ref: Ref[F, Option
     ref.set(
       DefaultInProgressSessionManager
         .InternalState(
-          DefaultInProgressSessionManager.TransitionState.CurrentElement(Set.empty),
+          DefaultInProgressSessionManager.TransitionState.FirstElement(Set.empty),
           session
         )
         .some
@@ -46,15 +46,16 @@ class DefaultInProgressSessionManager[F[_]: Functor] private (ref: Ref[F, Option
             errorStateTransformationResult(state)
         }))
 
-  override def transitionToNextElement: F[Either[InProgressSessionManager.Error, SessionService.NonPendingSessionElementState]] =
+  override def forceTransitionToNextElement
+    : F[Either[InProgressSessionManager.Error, SessionService.NonPendingSessionElementState]] =
     modifyNonEmpty(state => mapInProgressSession(state)(transitionSessionToNextElementState))
 
-  override def transitionToNextElement(
+  override def transitionToFirstElement(
     respondentId: User.Id): F[Either[InProgressSessionManager.Error, SessionService.SessionElementState]] =
     modifyNonEmpty(state =>
       mapInProgressSession(state) { session =>
         state.transition match {
-          case t: DefaultInProgressSessionManager.TransitionState.CurrentElement =>
+          case t: DefaultInProgressSessionManager.TransitionState.FirstElement =>
             val transition = t.copy(t.usersReadyToTransition + respondentId)
             if (session.joinedUsers.forall(r => transition.usersReadyToTransition.contains(r.id)))
               val newState = state.copy(transition = DefaultInProgressSessionManager.TransitionState.NotTransitioning)
@@ -63,21 +64,8 @@ class DefaultInProgressSessionManager[F[_]: Functor] private (ref: Ref[F, Option
               val newState = state.copy(transition)
               (newState.some, currentElementState(newState).asRight)
 
-          case t: DefaultInProgressSessionManager.TransitionState.NextElement =>
-            val transition = t.copy(t.usersReadyToTransition.add(respondentId))
-            if (session.joinedUsers.forall(r => transition.usersReadyToTransition.contains(r.id)))
-              transitionSessionToNextElementState(session)
-            else
-              val newState = state.copy(transition)
-              (newState.some, currentElementState(newState).asRight)
-
           case DefaultInProgressSessionManager.TransitionState.NotTransitioning =>
-            val transition = DefaultInProgressSessionManager.TransitionState.NextElement(NonEmptySet.one(respondentId))
-            if (session.joinedUsers.forall(r => transition.usersReadyToTransition.contains(r.id)))
-              transitionSessionToNextElementState(session)
-            else
-              val newState = state.copy(transition)
-              (newState.some, currentElementState(newState).asRight)
+            (state.some, InProgressSessionManager.Error.IncorrectSessionState.asLeft[SessionService.SessionElementState])
         }
       })
 
@@ -123,8 +111,7 @@ object DefaultInProgressSessionManager:
   sealed private trait TransitionState
 
   private object TransitionState:
-    case class CurrentElement(usersReadyToTransition: Set[User.Id]) extends DefaultInProgressSessionManager.TransitionState
-    case class NextElement(usersReadyToTransition: NonEmptySet[User.Id]) extends DefaultInProgressSessionManager.TransitionState
+    case class FirstElement(usersReadyToTransition: Set[User.Id]) extends DefaultInProgressSessionManager.TransitionState
     case object NotTransitioning extends DefaultInProgressSessionManager.TransitionState
 
   private case class InternalState(
@@ -135,11 +122,8 @@ object DefaultInProgressSessionManager:
     state.session match {
       case inProgress: Session.InProgress =>
         state.transition match {
-          case _: DefaultInProgressSessionManager.TransitionState.CurrentElement =>
-            SessionService.SessionElementState.Transitioning(inProgress)
-
-          case _: DefaultInProgressSessionManager.TransitionState.NextElement =>
-            SessionService.SessionElementState.Transitioning(inProgress)
+          case _: DefaultInProgressSessionManager.TransitionState.FirstElement =>
+            SessionService.SessionElementState.BeforeFirstElement(inProgress)
 
           case DefaultInProgressSessionManager.TransitionState.NotTransitioning =>
             nonPendingCurrentSessionElementState(inProgress)

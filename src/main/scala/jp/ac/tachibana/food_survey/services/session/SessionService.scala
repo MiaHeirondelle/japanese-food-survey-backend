@@ -28,7 +28,7 @@ trait SessionService[F[_]]:
   def transitionToNextElement
     : F[Either[SessionService.TransitionToNextElementError, SessionService.NonPendingSessionElementState]]
 
-  def transitionToNextElement(
+  def transitionToFirstElement(
     respondentId: User.Id): F[Either[SessionService.TransitionToNextElementError, SessionService.SessionElementState]]
 
   def finish: F[Either[SessionService.FinishSessionError, Session.Finished]]
@@ -45,7 +45,7 @@ object SessionService:
 
   object SessionElementState:
 
-    case class Finished(session: Session.Finished) extends NonPendingSessionElementState
+    case class BeforeFirstElement(session: Session.InProgress) extends SessionElementState
     case class Question(
       session: Session.InProgress,
       state: SessionService.QuestionState,
@@ -55,7 +55,7 @@ object SessionService:
       session: Session.InProgress,
       questionReview: SessionElement.QuestionReview)
         extends NonPendingSessionElementState
-    case class Transitioning(session: Session.InProgress) extends SessionElementState
+    case class Finished(session: Session.Finished) extends NonPendingSessionElementState
 
   enum QuestionState:
     case Pending, Finished

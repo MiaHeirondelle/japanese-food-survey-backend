@@ -16,13 +16,13 @@ trait InProgressSessionManager[F[_]]:
 
   /** Immediately transitions to then ext element.
     */
-  def transitionToNextElement: F[Either[InProgressSessionManager.Error, SessionService.NonPendingSessionElementState]]
+  def forceTransitionToNextElement: F[Either[InProgressSessionManager.Error, SessionService.NonPendingSessionElementState]]
 
   /** Will wait for all the respondents to call this method before transitioning.
     * @return
     *   `None` if there are no elements left to provide. Otherwise, returns the next element state.
     */
-  def transitionToNextElement(
+  def transitionToFirstElement(
     respondentId: User.Id): F[Either[InProgressSessionManager.Error, SessionService.SessionElementState]]
 
   private[managers] def unregisterSession: F[Unit]

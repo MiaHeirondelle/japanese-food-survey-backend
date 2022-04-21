@@ -116,15 +116,15 @@ class DefaultSessionService[F[_]: Monad](
 
   override def transitionToNextElement
     : F[Either[SessionService.TransitionToNextElementError, SessionService.NonPendingSessionElementState]] =
-    inProgressSessionManager.transitionToNextElement
+    inProgressSessionManager.forceTransitionToNextElement
       .map(_.leftMap { case InProgressSessionManager.Error.IncorrectSessionState =>
         SessionService.TransitionToNextElementError.WrongSessionStatus
       })
 
-  override def transitionToNextElement(
+  override def transitionToFirstElement(
     respondentId: User.Id): F[Either[SessionService.TransitionToNextElementError, SessionService.SessionElementState]] =
     inProgressSessionManager
-      .transitionToNextElement(respondentId)
+      .transitionToFirstElement(respondentId)
       .map(_.leftMap { case InProgressSessionManager.Error.IncorrectSessionState =>
         SessionService.TransitionToNextElementError.WrongSessionStatus
       })

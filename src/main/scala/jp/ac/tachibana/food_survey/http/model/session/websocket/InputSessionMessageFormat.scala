@@ -23,8 +23,11 @@ object InputSessionMessageFormat:
           case InputSessionMessageTypeFormat.BeginSession =>
             InputSessionMessageFormat.BeginSession.asRight
 
-          case InputSessionMessageTypeFormat.ReadyForNextElement =>
-            InputSessionMessageFormat.ReadyForNextElement.asRight
+          case InputSessionMessageTypeFormat.ReadyToProceed =>
+            InputSessionMessageFormat.ReadyToProceed.asRight
+
+          case InputSessionMessageTypeFormat.ProvideIntermediateAnswer =>
+            Decoder[InputSessionMessageFormat.ProvideIntermediateAnswer].apply(cursor)
 
           case InputSessionMessageTypeFormat.ProvideAnswer =>
             Decoder[InputSessionMessageFormat.ProvideAnswer].apply(cursor)
@@ -33,7 +36,13 @@ object InputSessionMessageFormat:
     }
 
   case object BeginSession extends InputSessionMessageFormat
-  case object ReadyForNextElement extends InputSessionMessageFormat
+  case object ReadyToProceed extends InputSessionMessageFormat
+  case class ProvideIntermediateAnswer(
+    question_id: String,
+    scale_value: Option[Int],
+    comment: Option[String])
+      extends InputSessionMessageFormat
+      derives Decoder
 
   case class ProvideAnswer(
     question_id: String,
@@ -57,8 +66,19 @@ object InputSessionMessageFormat:
         case InputSessionMessageFormat.BeginSession =>
           InputSessionMessage.BeginSession
 
-        case InputSessionMessageFormat.ReadyForNextElement =>
-          InputSessionMessage.ReadyForNextElement
+        case InputSessionMessageFormat.ReadyToProceed =>
+          InputSessionMessage.ReadyToProceed
+
+        case InputSessionMessageFormat.ProvideIntermediateAnswer(questionId, scaleValue, comment) =>
+          InputSessionMessage.ProvideIntermediateAnswer(
+            Question.Id(questionId),
+            scaleValue.map(QuestionAnswer.ScaleValue(_)),
+            // todo: move validation
+            comment.flatMap { c =>
+              val trimmed = c.trim
+              Option.when(trimmed.nonEmpty)(QuestionAnswer.Comment(trimmed))
+            }
+          )
 
         case InputSessionMessageFormat.ProvideAnswer(questionId, scaleValue, comment) =>
           InputSessionMessage.ProvideAnswer(

@@ -5,14 +5,15 @@ import cats.syntax.show.*
 import io.circe.Decoder
 
 enum InputSessionMessageTypeFormat:
-  case BeginSession, ReadyForNextElement, ProvideAnswer
+  case BeginSession, ReadyToProceed, ProvideIntermediateAnswer, ProvideAnswer
 
 object InputSessionMessageTypeFormat:
 
   implicit val decoder: Decoder[InputSessionMessageTypeFormat] =
     Decoder.decodeString.emap {
-      case "begin_session"          => InputSessionMessageTypeFormat.BeginSession.asRight
-      case "ready_for_next_element" => InputSessionMessageTypeFormat.ReadyForNextElement.asRight
-      case "provide_answer"         => InputSessionMessageTypeFormat.ProvideAnswer.asRight
-      case messageType              => show"Unknown input session message type $messageType".asLeft
+      case "begin_session"               => InputSessionMessageTypeFormat.BeginSession.asRight
+      case "ready_to_proceed"            => InputSessionMessageTypeFormat.ReadyToProceed.asRight
+      case "provide_intermediate_answer" => InputSessionMessageTypeFormat.ProvideIntermediateAnswer.asRight
+      case "provide_answer"              => InputSessionMessageTypeFormat.ProvideAnswer.asRight
+      case messageType                   => show"Unknown input session message type $messageType".asLeft
     }

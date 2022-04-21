@@ -3,6 +3,8 @@ package jp.ac.tachibana.food_survey.services.session
 import cats.data.{EitherT, NonEmptyList, OptionT}
 import cats.effect.std.Queue
 import cats.effect.syntax.spawn.*
+import cats.effect.syntax.monadCancel.*
+import cats.syntax.option.*
 import cats.effect.{Fiber, Ref, Temporal}
 import cats.syntax.applicative.*
 import cats.syntax.applicativeError.*
@@ -24,7 +26,7 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
 // todo: store users to check rights
 class DefaultSessionListenerService[F[_]: Temporal](
   currentSessionStateManager: CurrentSessionStateManager[F],
-  ticksRef: Ref[F, List[Fiber[F, Throwable, Unit]]],
+  ticksRef: Ref[F, Option[Fiber[F, Throwable, Unit]]],
   outputsMapRef: Ref[F, Map[User.Id, Queue[F, OutputSessionMessage]]])
     extends SessionListenerService[F]:
 
@@ -54,15 +56,22 @@ class DefaultSessionListenerService[F[_]: Temporal](
   override def tickBroadcast(
     tick: FiniteDuration,
     limit: Duration
-  )(createMessage: Duration => OutputSessionMessage): F[Unit] =
-    val task = repeatExecution(tick, limit)(l => broadcast(createMessage(l)))
-    task.start.flatMap(fiber => ticksRef.update(fiber :: _))
+  )(tickF: (Session, Duration) => F[Option[OutputSessionMessage]]): F[Unit] =
+    val task = repeatExecution(tick, limit)(l =>
+      (for {
+        session <- OptionT(currentSessionStateManager.getCurrentSession)
+        message <- OptionT(tickF(session, l))
+        result <- OptionT.liftF(broadcastMessage(message)(session))
+      } yield result).value.void)
 
-  override def stopTicks: F[Unit] =
-    ticksRef.getAndSet(List.empty).flatMap(_.traverse(_.cancel)).void
+    // todo: old tick - uncancelable!
+    task.start.flatMap(fiber => ticksRef.set(fiber.some))
+
+  override def stopTick: F[Unit] =
+    ticksRef.getAndSet(none).flatMap(_.traverse(_.cancel)).void
 
   override def stop: F[Unit] =
-    stopTicks >> unregisterListeners
+    stopTick >> unregisterListeners
 
   private def createOutputStream(
     queue: Queue[F, OutputSessionMessage]): SessionListenerOutput[F] =
@@ -114,5 +123,5 @@ object DefaultSessionListenerService:
     currentSessionStateManager: CurrentSessionStateManager[F]): F[SessionListenerService[F]] =
     for {
       outputsMapRef <- Ref.of(Map.empty[User.Id, Queue[F, OutputSessionMessage]])
-      ticksRef <- Ref.of(List.empty[Fiber[F, Throwable, Unit]])
+      ticksRef <- Ref.of(none[Fiber[F, Throwable, Unit]])
     } yield new DefaultSessionListenerService[F](currentSessionStateManager, ticksRef, outputsMapRef)

@@ -3,8 +3,8 @@ package jp.ac.tachibana.food_survey.http.model.session.websocket
 import io.circe.Encoder
 
 enum OutputSessionMessageTypeFormat:
-  case UserJoined, SessionBegan, TimerTick, TransitionToNextElement, BasicQuestionSelected, RepeatedQuestionSelected,
-  BasicQuestionReviewSelected, SessionFinished
+  case UserJoined, SessionBegan, TimerTick, BasicQuestionSelected, RepeatedQuestionSelected, BasicQuestionReviewSelected,
+  SessionFinished
 
 object OutputSessionMessageTypeFormat:
 
@@ -16,8 +16,6 @@ object OutputSessionMessageTypeFormat:
         "session_began"
       case OutputSessionMessageTypeFormat.TimerTick =>
         "timer_tick"
-      case OutputSessionMessageTypeFormat.TransitionToNextElement =>
-        "transition_to_next_element"
       case OutputSessionMessageTypeFormat.BasicQuestionSelected =>
         "basic_question_selected"
       case OutputSessionMessageTypeFormat.RepeatedQuestionSelected =>

@@ -28,8 +28,6 @@ object OutputSessionMessage:
 
   case class TimerTick(remainingTimeMs: Long) extends OutputSessionMessage
 
-  case object TransitionToNextElement extends OutputSessionMessage
-
   case class SessionFinished(session: Session.Finished) extends OutputSessionMessage
 
   case object Shutdown extends OutputSessionMessage

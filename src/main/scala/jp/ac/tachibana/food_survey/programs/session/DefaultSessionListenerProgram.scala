@@ -46,18 +46,38 @@ class DefaultSessionListenerProgram[F[_]: Concurrent](
         OptionT(sessionService.begin(session.admin).map(_.toOption))
           .map[OutputSessionMessage](OutputSessionMessage.SessionBegan.apply)
           .value
-      case InputSessionMessage.ReadyForNextElement =>
-        user match {
-          case respondent: User.Respondent =>
-            EitherT(sessionService.transitionToNextElement(respondent.id))
-              .semiflatMap(processTransitionToNextElementResult)
-              .toOption
-              .flattenOption
+      case InputSessionMessage.ReadyToProceed =>
+        EitherT(sessionService.getCurrentElementState).toOption.flatMapF {
+          case _: SessionService.SessionElementState.BeforeFirstElement =>
+            EitherT(sessionService.transitionToFirstElement(user.id)).toOption
+              .flatMapF(processTransitionToFirstElementResult)
               .value
-          case admin: User.Admin =>
-            // todo: immediate transition
+
+          case state: SessionService.NonPendingSessionElementState =>
+            state.session match {
+              case s: Session.InProgress =>
+                elementSelectedMessage(s).some.pure[F]
+
+              case s: Session.Finished =>
+                OutputSessionMessage.SessionFinished(s).some.pure[F]
+            }
+        }.value
+      case InputSessionMessage.ProvideIntermediateAnswer(questionId, scaleValue, comment) =>
+        session match {
+          case s: Session.InProgress =>
+            OptionT
+              .fromOption(s.questionById(questionId))
+              .flatMap { question =>
+                val answer = question.toAnswer(session.number, user.id, scaleValue, comment)
+                EitherT(sessionService.provideAnswer(answer)).toOption
+              }
+              .value
+              .as(none)
+
+          case _ =>
             none[OutputSessionMessage].pure[F]
         }
+
       case InputSessionMessage.ProvideAnswer(questionId, scaleValue, comment) =>
         session match {
           case s: Session.InProgress =>
@@ -69,8 +89,7 @@ class DefaultSessionListenerProgram[F[_]: Concurrent](
               }
               .flatMap {
                 case SessionService.SessionElementState.Question(_, SessionService.QuestionState.Finished, _) =>
-                  EitherT(sessionService.transitionToNextElement).toOption.semiflatMap(
-                    processTransitionToNextElementNonPendingResult)
+                  OptionT(forceProceedToNextElement)
 
                 case SessionService.SessionElementState.Question(_, SessionService.QuestionState.Pending, _) =>
                   OptionT.none
@@ -82,38 +101,52 @@ class DefaultSessionListenerProgram[F[_]: Concurrent](
         }
     }
 
+  private def proceedToNextElement: F[Option[OutputSessionMessage]] =
+    EitherT(sessionService.transitionToNextElement).toOption
+      .semiflatMap(processTransitionToNextElementNonPendingResult)
+      .value
+
+  private def forceProceedToNextElement: F[Option[OutputSessionMessage]] =
+    EitherT(sessionService.transitionToNextElement).toOption
+      .semiflatMap(state => sessionListenerService.stopTick >> processTransitionToNextElementNonPendingResult(state))
+      .value
+
   private def processTransitionToNextElementNonPendingResult(
     elementState: SessionService.NonPendingSessionElementState): F[OutputSessionMessage] =
-    sessionListenerService.stopTicks >>
-      (elementState match {
-        case SessionService.SessionElementState.Finished(session) =>
-          // todo: check session only finished once
-          sessionService.finish.as(OutputSessionMessage.SessionFinished(session))
-        case SessionService.SessionElementState.Question(session, state, question) =>
-          startSessionElementTimerTicks(question.showDuration)
-            .as(questionElementSelectedMessage(session, question))
-        case SessionService.SessionElementState.QuestionReview(session, questionReview) =>
-          startSessionElementTimerTicks(questionReview.showDuration)
-            .as(questionReviewElementSelectedMessage(session, questionReview))
-      })
+    println("here")
+    elementState match {
+      case SessionService.SessionElementState.Finished(session) =>
+        println("there")
+        // todo: check session only finished once
+        sessionService.finish.as(OutputSessionMessage.SessionFinished(session))
+      case SessionService.SessionElementState.Question(session, state, question) =>
+        startSessionElementTimerTicks(question.showDuration)
+          .as(questionElementSelectedMessage(session, question))
+      case SessionService.SessionElementState.QuestionReview(session, questionReview) =>
+        startSessionElementTimerTicks(questionReview.showDuration)
+          .as(questionReviewElementSelectedMessage(session, questionReview))
+    }
 
-  private def processTransitionToNextElementResult(
+  private def processTransitionToFirstElementResult(
     element: SessionService.SessionElementState): F[Option[OutputSessionMessage]] =
     element match {
       case e: SessionService.NonPendingSessionElementState =>
         processTransitionToNextElementNonPendingResult(e).map(_.some)
 
-      case _: SessionService.SessionElementState.Transitioning =>
+      case _: SessionService.SessionElementState.BeforeFirstElement =>
         none.pure[F]
     }
 
   private def startSessionElementTimerTicks(duration: FiniteDuration): F[Unit] =
     sessionListenerService.tickBroadcast(1.second, duration) {
-      case p: FiniteDuration if p > Duration.Zero =>
-        OutputSessionMessage.TimerTick(p.toMillis)
+      case (s, p: FiniteDuration) if p > Duration.Zero =>
+        OutputSessionMessage.TimerTick(p.toMillis).some.pure[F]
 
-      case _ =>
-        OutputSessionMessage.TransitionToNextElement
+      case (s: Session.InProgress, p) if p <= Duration.Zero =>
+        proceedToNextElement
+
+      case (_, _) =>
+        none[OutputSessionMessage].pure[F]
     }
 
   private def questionElementSelectedMessage(
@@ -138,4 +171,12 @@ class DefaultSessionListenerProgram[F[_]: Concurrent](
 
       case e =>
         ???
+    }
+
+  private def elementSelectedMessage(session: Session.InProgress): OutputSessionMessage =
+    session.currentElement match {
+      case question: SessionElement.Question =>
+        questionElementSelectedMessage(session, question)
+      case questionReview: SessionElement.QuestionReview =>
+        questionReviewElementSelectedMessage(session, questionReview)
     }

@@ -24,10 +24,10 @@ trait SessionListenerService[F[_]]:
   def tickBroadcast(
     tick: FiniteDuration,
     limit: Duration
-  )(createMessage: Duration => OutputSessionMessage): F[Unit]
+  )(createMessage: (Session, Duration) => F[Option[OutputSessionMessage]]): F[Unit]
 
   // todo:
-  def stopTicks: F[Unit]
+  def stopTick: F[Unit]
 
   // todo: update signature
   def stop: F[Unit]

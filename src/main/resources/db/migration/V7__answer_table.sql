@@ -12,5 +12,5 @@ CREATE TABLE "answer"
   previous_question_id question_id NULL REFERENCES "question" (id),
   scale_value          INT NULL,
   comment              TEXT NULL,
-  UNIQUE (respondent_id, question_id, previous_question_id)
+  UNIQUE (session_number, respondent_id, question_id)
 );

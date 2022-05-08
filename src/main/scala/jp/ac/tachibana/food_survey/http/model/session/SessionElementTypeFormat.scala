@@ -3,7 +3,7 @@ package jp.ac.tachibana.food_survey.http.model.session
 import io.circe.Encoder
 
 enum SessionElementTypeFormat:
-  case Question, QuestionReview
+  case Question, QuestionReview, Text
 
 object SessionElementTypeFormat:
 
@@ -11,4 +11,5 @@ object SessionElementTypeFormat:
     Encoder.encodeString.contramap {
       case SessionElementTypeFormat.Question       => "question"
       case SessionElementTypeFormat.QuestionReview => "question_review"
+      case SessionElementTypeFormat.Text           => "text"
     }

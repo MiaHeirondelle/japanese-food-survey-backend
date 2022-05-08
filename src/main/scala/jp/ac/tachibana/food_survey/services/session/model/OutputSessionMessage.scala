@@ -32,6 +32,8 @@ object OutputSessionMessage:
     previousAnswers: List[QuestionAnswer])
       extends OutputSessionMessage
 
+  case class TextSelected(element: SessionElement.Text) extends OutputSessionMessage
+
   case class TimerTick(remainingTimeMs: Long) extends OutputSessionMessage
 
   case class SessionFinished(session: Session.Finished) extends OutputSessionMessage

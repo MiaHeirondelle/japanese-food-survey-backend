@@ -4,7 +4,7 @@ import io.circe.Encoder
 
 enum OutputSessionMessageTypeFormat:
   case UserJoined, SessionBegan, TimerTick, BasicQuestionSelected, RepeatedQuestionSelected, BasicQuestionReviewSelected,
-  RepeatedQuestionReviewSelected, SessionFinished
+  RepeatedQuestionReviewSelected, TextSelected, SessionFinished
 
 object OutputSessionMessageTypeFormat:
 
@@ -24,6 +24,8 @@ object OutputSessionMessageTypeFormat:
         "basic_question_review_selected"
       case OutputSessionMessageTypeFormat.RepeatedQuestionReviewSelected =>
         "repeated_question_review_selected"
+      case OutputSessionMessageTypeFormat.TextSelected =>
+        "text_selected"
       case OutputSessionMessageTypeFormat.SessionFinished =>
         "session_finished"
     }

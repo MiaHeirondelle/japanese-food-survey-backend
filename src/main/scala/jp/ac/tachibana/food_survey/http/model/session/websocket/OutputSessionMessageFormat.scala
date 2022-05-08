@@ -36,6 +36,9 @@ object OutputSessionMessageFormat:
         case bqr: OutputSessionMessageFormat.RepeatedQuestionReviewSelected =>
           Encoder.AsObject[OutputSessionMessageFormat.RepeatedQuestionReviewSelected].encodeObject(bqr)
 
+        case t: OutputSessionMessageFormat.TextSelected =>
+          Encoder.AsObject[OutputSessionMessageFormat.TextSelected].encodeObject(t)
+
         case sf: OutputSessionMessageFormat.SessionFinished =>
           Encoder.AsObject[OutputSessionMessageFormat.SessionFinished].encodeObject(sf)
       }
@@ -77,6 +80,9 @@ object OutputSessionMessageFormat:
     previous_answers: List[QuestionAnswerFormat])
       extends OutputSessionMessageFormat(OutputSessionMessageTypeFormat.RepeatedQuestionReviewSelected)
       derives Encoder.AsObject
+
+  case class TextSelected(element: SessionElementFormat)
+      extends OutputSessionMessageFormat(OutputSessionMessageTypeFormat.TextSelected) derives Encoder.AsObject
 
   case class SessionFinished(
     session: SessionFormat)
@@ -133,6 +139,13 @@ object OutputSessionMessageFormat:
             SessionElementFormat.fromDomain(element),
             answers.map(QuestionAnswerFormat.fromDomain),
             previousAnswers.map(QuestionAnswerFormat.fromDomain)
+          )
+        )
+
+      case OutputSessionMessage.TextSelected(element) =>
+        jsonToSocketFrame(
+          OutputSessionMessageFormat.TextSelected(
+            SessionElementFormat.fromDomain(element)
           )
         )
 

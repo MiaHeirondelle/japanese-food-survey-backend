@@ -15,6 +15,8 @@ object SessionElementFormat:
         questionFromDomain(e)
       case e: SessionElement.QuestionReview =>
         questionReviewFromDomain(e)
+      case e: SessionElement.Text =>
+        textFromDomain(e)
     }
 
   private def questionFromDomain(element: SessionElement.Question): SessionElementFormat.Question =
@@ -50,6 +52,12 @@ object SessionElementFormat:
         )
     }
 
+  private def textFromDomain(element: SessionElement.Text): SessionElementFormat =
+    SessionElementFormat.Text(
+      number = element.number.value,
+      text = element.text
+    )
+
   implicit val encoder: Encoder[SessionElementFormat] =
     Encoder.AsObject.instance { se =>
       val base = se match {
@@ -57,6 +65,8 @@ object SessionElementFormat:
           Encoder.AsObject[SessionElementFormat.Question].encodeObject(q)
         case qr: SessionElementFormat.QuestionReview =>
           Encoder.AsObject[SessionElementFormat.QuestionReview].encodeObject(qr)
+        case t: SessionElementFormat.Text =>
+          Encoder.AsObject[SessionElementFormat.Text].encodeObject(t)
       }
       base.add("type", Encoder[SessionElementTypeFormat].apply(se.`type`))
     }
@@ -73,4 +83,10 @@ object SessionElementFormat:
     question: QuestionFormat,
     previous_question: Option[QuestionFormat])
       extends SessionElementFormat(SessionElementTypeFormat.QuestionReview)
+      derives Encoder.AsObject
+
+  private case class Text(
+    number: Int,
+    text: String)
+      extends SessionElementFormat(SessionElementTypeFormat.Text)
       derives Encoder.AsObject

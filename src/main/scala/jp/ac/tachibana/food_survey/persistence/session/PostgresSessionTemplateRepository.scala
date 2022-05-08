@@ -18,7 +18,7 @@ import jp.ac.tachibana.food_survey.persistence.formats.SessionInstances.SessionE
 class PostgresSessionTemplateRepository[F[_]: Async](implicit tr: Transactor[F]) extends SessionTemplateRepository[F]:
 
   private val getSessionElementsQuery =
-    sql"""SELECT element_number, type, question_id, show_duration_seconds FROM "session_template_element"
+    sql"""SELECT element_number, type, question_id, text, show_duration_seconds FROM "session_template_element"
          |ORDER BY element_number""".stripMargin
       .query[SessionElementPostgresFormat]
       .nel
@@ -33,7 +33,7 @@ class PostgresSessionTemplateRepository[F[_]: Async](implicit tr: Transactor[F])
       questionIds = extractRequiredQuestionIds(elements)
       questionsOpt <- NonEmptyVector.fromVector(questionIds).traverse(getQuestionsByIdsQuery)
       questionsMap = questionsOpt.fold(Map.empty[Question.Id, Question])(_.groupBy(_.id).view.mapValues(_.head).toMap)
-      sessionElements = fillInQuestions(elements, questionsMap)
+      sessionElements = createSessionElements(elements, questionsMap)
     } yield SessionTemplate(sessionElements)
     query.transact(tr)
 
@@ -44,11 +44,14 @@ class PostgresSessionTemplateRepository[F[_]: Async](implicit tr: Transactor[F])
       .nel
 
   private def extractRequiredQuestionIds(elements: NonEmptyVector[SessionElementPostgresFormat]): Vector[Question.Id] =
-    elements.collect { case SessionElementPostgresFormat.Question(_, questionId, _) =>
-      questionId
+    elements.collect {
+      case SessionElementPostgresFormat.Question(_, questionId, _) =>
+        questionId
+      case SessionElementPostgresFormat.QuestionReview(_, questionId, _) =>
+        questionId
     }
 
-  private def fillInQuestions(
+  private def createSessionElements(
     elements: NonEmptyVector[SessionElementPostgresFormat],
     questions: Map[Question.Id, Question]): NonEmptyVector[SessionElement] =
     // todo: question error?
@@ -69,4 +72,6 @@ class PostgresSessionTemplateRepository[F[_]: Async](implicit tr: Transactor[F])
           case q: Question.Repeated =>
             SessionElement.QuestionReview.Repeated(number, q, questions(q.previousQuestionId), showDuration)
         }
+      case SessionElementPostgresFormat.Text(number, text, showDuration) =>
+        SessionElement.Text(number, text, showDuration)
     }

@@ -56,6 +56,8 @@ class DefaultSessionListenerProgram[F[_]: Concurrent](
                 elementSelectedMessage(s.session)
               case s: SessionService.SessionElementState.QuestionReview =>
                 elementSelectedMessage(s.session)
+              case s: SessionService.SessionElementState.Text =>
+                elementSelectedMessage(s.session)
               case s: SessionService.SessionElementState.BeforeFirstElement =>
                 elementSelectedMessage(s.session)
             }.value
@@ -137,6 +139,8 @@ class DefaultSessionListenerProgram[F[_]: Concurrent](
       case SessionService.SessionElementState.QuestionReview(session, questionReview) =>
         startSessionElementTimerTicks(questionReview.showDuration)
           .as(questionReviewElementSelectedMessage(session, questionReview))
+      case SessionService.SessionElementState.Text(_, text) =>
+        startSessionElementTimerTicks(text.showDuration).as(textElementSelectedMessage(text))
     }
 
   private def processElementState(state: SessionService.SessionElementState): F[Option[OutputSessionMessage]] =
@@ -187,10 +191,15 @@ class DefaultSessionListenerProgram[F[_]: Concurrent](
         OutputSessionMessage.RepeatedQuestionReviewSelected(e, answers, previousAnswers)
     }
 
+  private def textElementSelectedMessage(text: SessionElement.Text): OutputSessionMessage =
+    OutputSessionMessage.TextSelected(text)
+
   private def elementSelectedMessage(session: Session.InProgress): OutputSessionMessage =
     session.currentElement match {
       case question: SessionElement.Question =>
         questionElementSelectedMessage(session, question)
       case questionReview: SessionElement.QuestionReview =>
         questionReviewElementSelectedMessage(session, questionReview)
+      case text: SessionElement.Text =>
+        textElementSelectedMessage(text)
     }

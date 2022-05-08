@@ -55,6 +55,10 @@ object SessionService:
       session: Session.InProgress,
       questionReview: SessionElement.QuestionReview)
         extends NonPendingSessionElementState
+    case class Text(
+      session: Session.InProgress,
+      text: SessionElement.Text)
+        extends NonPendingSessionElementState
     case class Finished(session: Session.Finished) extends NonPendingSessionElementState
 
   enum QuestionState:

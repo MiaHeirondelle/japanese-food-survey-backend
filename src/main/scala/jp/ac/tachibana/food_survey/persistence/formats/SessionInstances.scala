@@ -90,15 +90,18 @@ trait SessionInstances:
       }
 
   implicit val sessionElementPostgresFormatRead: Read[SessionElementPostgresFormat] =
-    Read[(SessionElement.Number, SessionElementPostgresFormat.Type, Option[SessionQuestion.Id], Int)]
+    Read[(SessionElement.Number, SessionElementPostgresFormat.Type, Option[SessionQuestion.Id], Option[String], Int)]
       .map {
-        case (number, SessionElementPostgresFormat.Type.Question, Some(questionId), showDurationSeconds) =>
+        case (number, SessionElementPostgresFormat.Type.Question, Some(questionId), None, showDurationSeconds) =>
           SessionElementPostgresFormat.Question(number, questionId, showDurationSeconds.seconds)
 
-        case (number, SessionElementPostgresFormat.Type.QuestionReview, Some(questionId), showDurationSeconds) =>
+        case (number, SessionElementPostgresFormat.Type.QuestionReview, Some(questionId), None, showDurationSeconds) =>
           SessionElementPostgresFormat.QuestionReview(number, questionId, showDurationSeconds.seconds)
 
-        case (number, _, _, _) =>
+        case (number, SessionElementPostgresFormat.Type.Text, None, Some(text), showDurationSeconds) =>
+          SessionElementPostgresFormat.Text(number, text, showDurationSeconds.seconds)
+
+        case (number, _, _, _, _) =>
           throw new Exception(show"Invalid session element: $number")
       }
 
@@ -168,10 +171,10 @@ object SessionInstances extends SessionInstances:
 
     case class Finished(
       number: Session.Number,
-      admin: User.Id
-      // todo: replies (nel)
-    ) extends SessionPostgresFormat(Session.Status.Finished, SessionPostgresFormat.Status.Finished)
+      admin: User.Id)
+        extends SessionPostgresFormat(Session.Status.Finished, SessionPostgresFormat.Status.Finished)
 
+  // todo: remove
   sealed private[persistence] trait SessionStatePostgresFormat
 
   private[persistence] object SessionStatePostgresFormat:
@@ -186,10 +189,7 @@ object SessionInstances extends SessionInstances:
 
     case class AwaitingUsers() extends SessionStatePostgresFormat derives Encoder.AsObject, Decoder
 
-    case class Finished(
-      // todo: replies (nel)
-    ) extends SessionStatePostgresFormat
-        derives Encoder.AsObject, Decoder
+    case class Finished() extends SessionStatePostgresFormat derives Encoder.AsObject, Decoder
 
   sealed abstract private[persistence] class SessionElementPostgresFormat(val `type`: SessionElementPostgresFormat.Type):
     def number: SessionElement.Number
@@ -207,6 +207,12 @@ object SessionInstances extends SessionInstances:
       questionId: SessionQuestion.Id,
       showDuration: FiniteDuration)
         extends SessionElementPostgresFormat(SessionElementPostgresFormat.Type.QuestionReview)
+
+    case class Text(
+      number: SessionElement.Number,
+      text: String,
+      showDuration: FiniteDuration)
+        extends SessionElementPostgresFormat(SessionElementPostgresFormat.Type.Text)
 
     enum Type:
       case Question, QuestionReview, Text

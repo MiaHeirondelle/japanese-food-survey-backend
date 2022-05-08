@@ -68,3 +68,9 @@ object SessionElement:
       previousQuestion: SessionQuestion,
       showDuration: FiniteDuration)
         extends SessionElement.QuestionReview
+
+  case class Text(
+    number: SessionElement.Number,
+    text: String,
+    showDuration: FiniteDuration)
+      extends SessionElement

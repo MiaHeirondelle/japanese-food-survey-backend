@@ -2,10 +2,8 @@ package jp.ac.tachibana.food_survey.util.crypto
 
 import java.math.BigInteger
 import java.security.MessageDigest
-
 import cats.effect.Sync
-
-import jp.ac.tachibana.food_survey.services.auth.domain.AuthToken
+import jp.ac.tachibana.food_survey.domain.auth.AuthToken
 
 class TokenHasher[F[_]: Sync]:
 

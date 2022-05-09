@@ -2,17 +2,17 @@ package jp.ac.tachibana.food_survey.util.crypto
 
 import java.math.BigInteger
 import java.security.{MessageDigest, SecureRandom}
-
 import cats.FlatMap
 import cats.effect.Sync
 import cats.syntax.eq.*
 import cats.syntax.flatMap.*
 import cats.syntax.functor.*
+import jp.ac.tachibana.food_survey.domain.auth
+import jp.ac.tachibana.food_survey.domain.auth.HashedUserCredentials
+
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
-
 import jp.ac.tachibana.food_survey.domain.user.UserCredentials
-import jp.ac.tachibana.food_survey.services.auth.domain.HashedUserCredentials
 
 class CryptoHasher[F[_]: Sync](
   random: SecureRandom,
@@ -57,7 +57,7 @@ object CryptoHasher:
       hasher
         .computeHash(userCredentials.password.value.value)
         .map { case (passwordHash, salt) =>
-          HashedUserCredentials(
+          auth.HashedUserCredentials(
             login = userCredentials.login,
             passwordHash = passwordHash,
             passwordSalt = salt

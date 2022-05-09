@@ -1,7 +1,5 @@
 package jp.ac.tachibana.food_survey.services.auth
 
-import java.time.Instant
-
 import cats.Monad
 import cats.data.OptionT
 import cats.effect.{Clock, Sync}
@@ -14,12 +12,13 @@ import cats.syntax.functor.*
 import cats.syntax.monad.*
 import cats.syntax.traverse.*
 import cats.syntax.traverseFilter.*
-
+import jp.ac.tachibana.food_survey.domain.auth.{AuthDetails, AuthToken, HashedUserCredentials}
 import jp.ac.tachibana.food_survey.domain.user.{User, UserCredentials}
 import jp.ac.tachibana.food_survey.persistence.auth.{AuthTokenRepository, CredentialsRepository}
 import jp.ac.tachibana.food_survey.persistence.user.UserRepository
-import jp.ac.tachibana.food_survey.services.auth.domain.{AuthDetails, AuthToken, HashedUserCredentials}
 import jp.ac.tachibana.food_survey.util.crypto.{CryptoHasher, Hash, TokenHasher}
+
+import java.time.Instant
 
 class DefaultAuthenticationService[F[_]: Monad: Clock](
   cryptoHasher: CryptoHasher[F],

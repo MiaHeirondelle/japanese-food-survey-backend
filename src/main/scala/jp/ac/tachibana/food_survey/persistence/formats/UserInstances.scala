@@ -4,8 +4,7 @@ import doobie.implicits.*
 import doobie.postgres.implicits.*
 import doobie.{Get, Meta, Put, Read}
 import io.circe.{Decoder, Encoder}
-
-import jp.ac.tachibana.food_survey.domain.user.{User, UserCredentials}
+import jp.ac.tachibana.food_survey.domain.user.{User, UserCredentials, UserData}
 
 trait UserInstances:
 
@@ -33,6 +32,23 @@ trait UserInstances:
       }
     )
 
+  implicit val userDataSexMeta: Meta[UserData.Sex] =
+    pgEnumStringOpt[UserData.Sex](
+      "user_sex",
+      {
+        case "male"   => Some(UserData.Sex.Male)
+        case "female" => Some(UserData.Sex.Female)
+        case _        => None
+      },
+      {
+        case UserData.Sex.Male   => "male"
+        case UserData.Sex.Female => "female"
+      }
+    )
+
+  implicit val userDataAgeMeta: Meta[UserData.Age] =
+    Meta[Int].imap(UserData.Age(_))(_.value)
+
   implicit val userRead: Read[User] =
     Read[(User.Id, String, User.Role)]
       .map { case (userId, name, role) => User(userId, name, role) }
@@ -44,5 +60,9 @@ trait UserInstances:
   implicit val respondentRead: Read[User.Respondent] =
     Read[(User.Id, String)]
       .map { case (userId, name) => User.Respondent(userId, name) }
+
+  implicit val userDataRead: Read[UserData] =
+    Read[(User.Id, Option[UserData.Sex], Option[UserData.Age])]
+      .map { case (userId, sex, age) => UserData(userId, sex, age) }
 
 object UserInstances extends UserInstances

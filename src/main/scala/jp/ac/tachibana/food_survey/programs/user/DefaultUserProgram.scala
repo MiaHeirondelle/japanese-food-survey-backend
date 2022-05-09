@@ -5,7 +5,6 @@ import cats.syntax.applicative.*
 import cats.syntax.flatMap.*
 import cats.syntax.functor.*
 
-import jp.ac.tachibana.food_survey.domain.user.User.Role
 import jp.ac.tachibana.food_survey.domain.user.{User, UserCredentials}
 import jp.ac.tachibana.food_survey.services.auth.AuthenticationService
 import jp.ac.tachibana.food_survey.services.user.UserService
@@ -24,7 +23,7 @@ class DefaultUserProgram[F[_]: Monad](
       result <- authenticationService.saveCredentials(user.id, credentials)
     } yield user.id
 
-  override def getAllByRole(role: Role): F[List[User]] =
+  override def getAllByRole(role: User.Role): F[List[User]] =
     userService.getAllByRole(role)
 
   private def generateUser(

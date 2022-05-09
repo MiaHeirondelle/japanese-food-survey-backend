@@ -11,14 +11,13 @@ import doobie.*
 import doobie.implicits.*
 import doobie.postgres.circe.jsonb.implicits.*
 import doobie.postgres.implicits.*
-
+import jp.ac.tachibana.food_survey.domain.auth.HashedUserCredentials
 import jp.ac.tachibana.food_survey.domain.question.{Question, QuestionAnswer}
 import jp.ac.tachibana.food_survey.domain.session.{Session, SessionAnswers}
 import jp.ac.tachibana.food_survey.domain.user.User
 import jp.ac.tachibana.food_survey.persistence.formats.ParameterInstances.*
 import jp.ac.tachibana.food_survey.persistence.formats.QuestionInstances.{AnswerId, AnswerPostgresFormat, QuestionPostgresFormat}
 import jp.ac.tachibana.food_survey.persistence.formats.SessionInstances.SessionPostgresFormat
-import jp.ac.tachibana.food_survey.services.auth.domain.HashedUserCredentials
 
 // todo: remove state
 class PostgresSessionRepository[F[_]: Async](implicit tr: Transactor[F]) extends SessionRepository[F]:

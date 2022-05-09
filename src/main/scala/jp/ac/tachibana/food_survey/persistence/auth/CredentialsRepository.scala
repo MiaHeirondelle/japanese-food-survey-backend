@@ -1,8 +1,8 @@
 package jp.ac.tachibana.food_survey.persistence.auth
 
-import jp.ac.tachibana.food_survey.domain.user
+import jp.ac.tachibana.food_survey.domain.auth.HashedUserCredentials
+import jp.ac.tachibana.food_survey.domain.{auth, user}
 import jp.ac.tachibana.food_survey.domain.user.{User, UserCredentials}
-import jp.ac.tachibana.food_survey.services.auth.domain.HashedUserCredentials
 import jp.ac.tachibana.food_survey.util.crypto.{Hash, Salt, Secret}
 
 trait CredentialsRepository[F[_]]:
@@ -33,4 +33,4 @@ object CredentialsRepository:
 
     extension (storedCredentials: StoredCredentials)
       def toHashedCredentials: HashedUserCredentials =
-        HashedUserCredentials(storedCredentials.login, storedCredentials.passwordHash, storedCredentials.passwordSalt)
+        auth.HashedUserCredentials(storedCredentials.login, storedCredentials.passwordHash, storedCredentials.passwordSalt)

@@ -1,16 +1,16 @@
 package jp.ac.tachibana.food_survey.services.user
 
 import java.util.UUID
-
 import cats.effect.Sync
 import cats.syntax.flatMap.*
 import cats.syntax.functor.*
+import jp.ac.tachibana.food_survey.domain.user.{User, UserData}
+import jp.ac.tachibana.food_survey.persistence.user.{UserDataRepository, UserRepository}
 
-import jp.ac.tachibana.food_survey.domain.user.User
-import jp.ac.tachibana.food_survey.domain.user.User.Id
-import jp.ac.tachibana.food_survey.persistence.user.UserRepository
-
-class DefaultUserService[F[_]: Sync](userRepository: UserRepository[F]) extends UserService[F]:
+class DefaultUserService[F[_]: Sync](
+  userRepository: UserRepository[F],
+  userDataRepository: UserDataRepository[F])
+    extends UserService[F]:
 
   override def create(
     name: String,
@@ -19,6 +19,12 @@ class DefaultUserService[F[_]: Sync](userRepository: UserRepository[F]) extends 
 
   override def getAllByRole(role: User.Role): F[List[User]] =
     userRepository.getAllByRole(role)
+
+  override def saveUserData(userData: UserData): F[Unit] =
+    userDataRepository.insert(userData)
+
+  override def getUserData(userId: User.Id): F[Option[UserData]] =
+    userDataRepository.get(userId)
 
   private def generateUser(
     name: String,

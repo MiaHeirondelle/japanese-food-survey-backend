@@ -62,14 +62,13 @@ class AuthenticationMiddleware[F[_]: Monad](
     )
 
   private def authenticate[A <: AuthDetails](
-    authDetailsTransformer: (AuthToken, User) => Option[A] = defaultAuthDetailsTransformer)
-    : Kleisli[OptionT[F, *], Request[F], A] =
+    authDetailsTransformer: AuthDetails => Option[A] = defaultAuthDetailsTransformer): Kleisli[OptionT[F, *], Request[F], A] =
     Kleisli { request =>
       for {
         cookie <- OptionT.fromOption(request.cookies.find(_.name === authenticationTokenCookieName))
         authToken = AuthToken(cookie.content)
-        user <- OptionT(authenticationProgram.authenticate(authToken).map(_.toOption))
-        result <- OptionT.fromOption(authDetailsTransformer(authToken, user))
+        authDetails <- OptionT(authenticationProgram.authenticate(authToken).map(_.toOption))
+        result <- OptionT.fromOption(authDetailsTransformer(authDetails))
       } yield result
     }
 
@@ -88,27 +87,21 @@ object AuthenticationMiddleware:
 
   val authenticationTokenCookieName = "JFSBSESSIONID"
 
-  private def defaultAuthDetailsTransformer(
-    authToken: AuthToken,
-    user: User): Option[AuthDetails] =
-    Some(AuthDetails.Generic(authToken, user))
+  private def defaultAuthDetailsTransformer(authDetails: AuthDetails): Option[AuthDetails] =
+    Some(authDetails)
 
-  private def respondentOnlyAuthDetailsTransformer(
-    authToken: AuthToken,
-    user: User): Option[AuthDetails.Respondent] =
-    user match {
+  private def respondentOnlyAuthDetailsTransformer(authDetails: AuthDetails): Option[AuthDetails.Respondent] =
+    authDetails.user match {
       case respondent: User.Respondent =>
-        Some(AuthDetails.Respondent(authToken, respondent))
+        Some(AuthDetails.Respondent(authDetails.token, respondent, authDetails.userDataSubmitted))
       case _: User.Admin =>
         None
     }
 
-  private def adminOnlyAuthDetailsTransformer(
-    authToken: AuthToken,
-    user: User): Option[AuthDetails.Admin] =
-    user match {
+  private def adminOnlyAuthDetailsTransformer(authDetails: AuthDetails): Option[AuthDetails.Admin] =
+    authDetails.user match {
       case admin: User.Admin =>
-        Some(AuthDetails.Admin(authToken, admin))
+        Some(AuthDetails.Admin(authDetails.token, admin))
       case _: User.Respondent =>
         None
     }

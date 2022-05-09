@@ -11,7 +11,7 @@ trait AuthenticationProgram[F[_]]:
 
   def login(credentials: UserCredentials): F[Either[AuthenticationProgram.LoginError, AuthDetails]]
 
-  def authenticate(token: AuthToken): F[Either[AuthenticationProgram.AuthenticationError, User]]
+  def authenticate(token: AuthToken): F[Either[AuthenticationProgram.AuthenticationError, AuthDetails]]
 
   def logout(token: AuthToken): F[Unit]
 

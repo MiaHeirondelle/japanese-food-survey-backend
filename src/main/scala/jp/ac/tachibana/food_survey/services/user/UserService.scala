@@ -1,6 +1,6 @@
 package jp.ac.tachibana.food_survey.services.user
 
-import jp.ac.tachibana.food_survey.domain.user.{User, UserData}
+import jp.ac.tachibana.food_survey.domain.user.{RespondentData, User}
 
 trait UserService[F[_]]:
 
@@ -10,6 +10,4 @@ trait UserService[F[_]]:
 
   def getAllByRole(role: User.Role): F[List[User]]
 
-  def saveUserData(userData: UserData): F[Unit]
-
-  def getUserData(userId: User.Id): F[Option[UserData]]
+  def submitRespondentData(respondentData: RespondentData): F[Unit]

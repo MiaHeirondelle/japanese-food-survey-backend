@@ -33,14 +33,14 @@ class AuthenticationRoutes[F[_]: Async](
         .flatMap {
           case Left(_) => Forbidden()
           case Right(details) =>
-            Ok(UserAuthenticatedResponse.fromDomain(details.user)).map(r =>
+            Ok(UserAuthenticatedResponse.fromDomain(details)).map(r =>
               authenticationMiddleware.withAuthCookie(response = r, token = details.token))
         }
     }
   }
   private def tokenRoutes = AuthedRoutes.of[AuthDetails, F] {
     case GET -> Root / "check" as details =>
-      Ok(UserAuthenticatedResponse.fromDomain(details.user))
+      Ok(UserAuthenticatedResponse.fromDomain(details))
 
     case POST -> Root / "logout" as details =>
       authenticationProgram.logout(details.token) >> Ok().map(_.removeCookie(authenticationTokenCookieName))

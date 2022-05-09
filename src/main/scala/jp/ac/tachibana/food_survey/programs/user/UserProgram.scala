@@ -1,6 +1,6 @@
 package jp.ac.tachibana.food_survey.programs.user
 
-import jp.ac.tachibana.food_survey.domain.user.{User, UserCredentials}
+import jp.ac.tachibana.food_survey.domain.user.{RespondentData, User, UserCredentials}
 
 trait UserProgram[F[_]]:
 
@@ -10,3 +10,5 @@ trait UserProgram[F[_]]:
     credentials: UserCredentials): F[User.Id]
 
   def getAllByRole(role: User.Role): F[List[User]]
+
+  def submitRespondentData(respondentData: RespondentData): F[Unit]

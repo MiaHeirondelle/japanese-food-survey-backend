@@ -4,7 +4,7 @@ import doobie.implicits.*
 import doobie.postgres.implicits.*
 import doobie.{Get, Meta, Put, Read}
 import io.circe.{Decoder, Encoder}
-import jp.ac.tachibana.food_survey.domain.user.{User, UserCredentials, UserData}
+import jp.ac.tachibana.food_survey.domain.user.{RespondentData, User, UserCredentials}
 
 trait UserInstances:
 
@@ -32,22 +32,22 @@ trait UserInstances:
       }
     )
 
-  implicit val userDataSexMeta: Meta[UserData.Sex] =
-    pgEnumStringOpt[UserData.Sex](
-      "user_sex",
+  implicit val respondentDataSexMeta: Meta[RespondentData.Sex] =
+    pgEnumStringOpt[RespondentData.Sex](
+      "respondent_sex",
       {
-        case "male"   => Some(UserData.Sex.Male)
-        case "female" => Some(UserData.Sex.Female)
+        case "male"   => Some(RespondentData.Sex.Male)
+        case "female" => Some(RespondentData.Sex.Female)
         case _        => None
       },
       {
-        case UserData.Sex.Male   => "male"
-        case UserData.Sex.Female => "female"
+        case RespondentData.Sex.Male   => "male"
+        case RespondentData.Sex.Female => "female"
       }
     )
 
-  implicit val userDataAgeMeta: Meta[UserData.Age] =
-    Meta[Int].imap(UserData.Age(_))(_.value)
+  implicit val respondentDataAgeMeta: Meta[RespondentData.Age] =
+    Meta[Int].imap(RespondentData.Age(_))(_.value)
 
   implicit val userRead: Read[User] =
     Read[(User.Id, String, User.Role)]
@@ -61,8 +61,8 @@ trait UserInstances:
     Read[(User.Id, String)]
       .map { case (userId, name) => User.Respondent(userId, name) }
 
-  implicit val userDataRead: Read[UserData] =
-    Read[(User.Id, Option[UserData.Sex], Option[UserData.Age])]
-      .map { case (userId, sex, age) => UserData(userId, sex, age) }
+  implicit val respondentDataRead: Read[RespondentData] =
+    Read[(User.Id, Option[RespondentData.Sex], Option[RespondentData.Age])]
+      .map { case (userId, sex, age) => RespondentData(userId, sex, age) }
 
 object UserInstances extends UserInstances

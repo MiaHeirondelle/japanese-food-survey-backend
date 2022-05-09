@@ -4,14 +4,14 @@ import cats.effect.{IO, IOApp}
 import doobie.Transactor
 import jp.ac.tachibana.food_survey.configuration.domain.ApplicationConfig
 import jp.ac.tachibana.food_survey.domain.session.Session
-import jp.ac.tachibana.food_survey.domain.user.{User, UserData}
+import jp.ac.tachibana.food_survey.domain.user.{RespondentData, User}
 import jp.ac.tachibana.food_survey.http.HttpService
 import jp.ac.tachibana.food_survey.http.middleware.AuthenticationMiddleware
 import jp.ac.tachibana.food_survey.http.routes.{AuthenticationRoutes, SessionRoutes, UserRoutes}
 import jp.ac.tachibana.food_survey.persistence.DatabaseTransactor
 import jp.ac.tachibana.food_survey.persistence.auth.*
 import jp.ac.tachibana.food_survey.persistence.session.*
-import jp.ac.tachibana.food_survey.persistence.user.{PostgresUserDataRepository, PostgresUserRepository}
+import jp.ac.tachibana.food_survey.persistence.user.{PostgresRespondentDataRepository, PostgresUserRepository}
 import jp.ac.tachibana.food_survey.programs.auth.DefaultAuthenticationProgram
 import jp.ac.tachibana.food_survey.programs.session.{DefaultSessionListenerProgram, DefaultSessionProgram}
 import jp.ac.tachibana.food_survey.programs.user.DefaultUserProgram
@@ -31,7 +31,7 @@ object Main extends IOApp.Simple:
         val authTokenRepository = new PostgresAuthTokenRepository[IO]()
         val credentialsRepository = new PostgresCredentialsRepository[IO]()
         val userRepository = new PostgresUserRepository[IO]()
-        val userDataRepository = new PostgresUserDataRepository[IO]()
+        val respondentDataRepository = new PostgresRespondentDataRepository[IO]()
         val sessionRepository = new PostgresSessionRepository[IO]()
         val sessionTemplateRepository = new PostgresSessionTemplateRepository[IO]
 
@@ -43,7 +43,7 @@ object Main extends IOApp.Simple:
             awaitingUsersSessionManager,
             inProgressSessionManager)
           authenticationService <- DefaultAuthenticationService
-            .create[IO](authTokenRepository, credentialsRepository, userRepository)
+            .create[IO](authTokenRepository, credentialsRepository, userRepository, respondentDataRepository)
           sessionService = new DefaultSessionService[IO](
             sessionTemplateRepository,
             userRepository,
@@ -51,7 +51,7 @@ object Main extends IOApp.Simple:
             awaitingUsersSessionManager,
             inProgressSessionManager)
           sessionListenerService <- DefaultSessionListenerService.create[IO](currentSessionStateManager)
-          userService = new DefaultUserService[IO](userRepository, userDataRepository)
+          userService = new DefaultUserService[IO](userRepository, respondentDataRepository)
 
           userProgram = new DefaultUserProgram[IO](authenticationService, userService)
           sessionProgram = new DefaultSessionProgram[IO](sessionService)

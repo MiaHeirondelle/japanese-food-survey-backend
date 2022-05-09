@@ -1,11 +1,11 @@
 package jp.ac.tachibana.food_survey.domain.user
 
-case class UserData(
+case class RespondentData(
   userId: User.Id,
-  sex: Option[UserData.Sex],
-  age: Option[UserData.Age])
+  sex: Option[RespondentData.Sex],
+  age: Option[RespondentData.Age])
 
-object UserData:
+object RespondentData:
 
   enum Sex:
     case Male, Female
@@ -16,5 +16,5 @@ object UserData:
 
     extension (age: Age) def value: Int = age
 
-    def apply(age: Int): UserData.Age =
+    def apply(age: Int): RespondentData.Age =
       age

@@ -15,7 +15,7 @@ import cats.syntax.traverseFilter.*
 import jp.ac.tachibana.food_survey.domain.auth.{AuthDetails, AuthToken, HashedUserCredentials}
 import jp.ac.tachibana.food_survey.domain.user.{User, UserCredentials}
 import jp.ac.tachibana.food_survey.persistence.auth.{AuthTokenRepository, CredentialsRepository}
-import jp.ac.tachibana.food_survey.persistence.user.UserRepository
+import jp.ac.tachibana.food_survey.persistence.user.{RespondentDataRepository, UserRepository}
 import jp.ac.tachibana.food_survey.util.crypto.{CryptoHasher, Hash, TokenHasher}
 
 import java.time.Instant
@@ -26,7 +26,8 @@ class DefaultAuthenticationService[F[_]: Monad: Clock](
   tokenGenerator: AuthTokenGenerator[F],
   authTokenRepository: AuthTokenRepository[F],
   credentialsRepository: CredentialsRepository[F],
-  userRepository: UserRepository[F])
+  userRepository: UserRepository[F],
+  respondentDataRepository: RespondentDataRepository[F])
     extends AuthenticationService[F]:
 
   override def saveCredentials(
@@ -52,18 +53,27 @@ class DefaultAuthenticationService[F[_]: Monad: Clock](
                 authToken <- tokenGenerator.generate
                 authTokenHash <- tokenHasher.hash(authToken)
                 createdAt <- Clock[F].realTime
+                userDataPresent <- user match {
+                  case _: User.Admin      => true.pure[F]
+                  case _: User.Respondent => respondentDataRepository.checkRespondentDataExists(user.id)
+                }
                 _ <- authTokenRepository.insert(user.id, authTokenHash, Instant.ofEpochMilli(createdAt.toMillis))
-              } yield AuthDetails.Generic(authToken, user)),
+              } yield AuthDetails.Generic(authToken, user, userDataPresent)),
           ifFalse = OptionT.none
         )
     } yield result).fold(AuthenticationService.LoginError.InvalidCredentials.asLeft)(_.asRight)
 
-  override def authenticate(token: AuthToken): F[Either[AuthenticationService.AuthenticationError, User]] =
+  override def authenticate(token: AuthToken): F[Either[AuthenticationService.AuthenticationError, AuthDetails]] =
     (for {
       tokenHash <- OptionT.liftF(tokenHasher.hash(token))
       userId <- OptionT(authTokenRepository.get(tokenHash))
       user <- OptionT(userRepository.get(userId))
-    } yield user.asRight[AuthenticationService.AuthenticationError])
+      userDataPresent <- user match {
+        case _: User.Admin      => OptionT.pure(true)
+        case _: User.Respondent => OptionT.liftF(respondentDataRepository.checkRespondentDataExists(user.id))
+      }
+      authDetails = AuthDetails.Generic(token, user, userDataPresent)
+    } yield authDetails.asRight[AuthenticationService.AuthenticationError])
       .getOrElse(Left(AuthenticationService.AuthenticationError.UserNotFound))
 
   override def logout(token: AuthToken): F[Unit] =
@@ -77,7 +87,8 @@ object DefaultAuthenticationService:
   def create[F[_]: Sync](
     authTokenRepository: AuthTokenRepository[F],
     credentialsRepository: CredentialsRepository[F],
-    userRepository: UserRepository[F]): F[AuthenticationService[F]] =
+    userRepository: UserRepository[F],
+    respondentDataRepository: RespondentDataRepository[F]): F[AuthenticationService[F]] =
     for {
       cryptoHasher <- CryptoHasher.create[F]
       tokenHasher = new TokenHasher[F]
@@ -88,4 +99,5 @@ object DefaultAuthenticationService:
       tokenGenerator,
       authTokenRepository,
       credentialsRepository,
-      userRepository)
+      userRepository,
+      respondentDataRepository)

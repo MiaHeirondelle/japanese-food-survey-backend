@@ -5,6 +5,7 @@ import cats.syntax.applicative.*
 import cats.syntax.flatMap.*
 import cats.syntax.functor.*
 import cats.syntax.semigroupk.*
+import jp.ac.tachibana.food_survey.domain.auth.AuthDetails
 import org.http4s.circe.CirceEntityDecoder.*
 import org.http4s.circe.CirceEntityEncoder.*
 import org.http4s.dsl.Http4sDslBinCompat
@@ -12,14 +13,12 @@ import org.http4s.server.Router
 import org.http4s.server.websocket.WebSocketBuilder2
 import org.http4s.websocket.WebSocketFrame
 import org.http4s.{AuthedRoutes, HttpRoutes, Response}
-
 import jp.ac.tachibana.food_survey.domain.user.User
 import jp.ac.tachibana.food_survey.http.HttpService
 import jp.ac.tachibana.food_survey.http.middleware.AuthenticationMiddleware
 import jp.ac.tachibana.food_survey.http.model.session.websocket.{InputSessionMessageFormat, OutputSessionMessageFormat}
 import jp.ac.tachibana.food_survey.http.model.session.{CreateSessionRequest, SessionFormat}
 import jp.ac.tachibana.food_survey.programs.session.{SessionListenerProgram, SessionProgram}
-import jp.ac.tachibana.food_survey.services.auth.domain.AuthDetails
 import jp.ac.tachibana.food_survey.services.session.model.*
 
 class SessionRoutes[F[_]: Async](

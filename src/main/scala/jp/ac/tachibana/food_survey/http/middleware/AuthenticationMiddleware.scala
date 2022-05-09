@@ -12,8 +12,8 @@ import cats.syntax.traverse.*
 import org.http4s.dsl.Http4sDsl
 import org.http4s.server.AuthMiddleware
 import org.http4s.{AuthedRoutes, Request, Response, ResponseCookie, SameSite}
-
 import jp.ac.tachibana.food_survey.configuration.domain.http.HttpAuthenticationConfig
+import jp.ac.tachibana.food_survey.domain.auth.{AuthDetails, AuthToken}
 import jp.ac.tachibana.food_survey.domain.user.User
 import jp.ac.tachibana.food_survey.http
 import jp.ac.tachibana.food_survey.http.middleware.AuthenticationMiddleware.{
@@ -22,12 +22,11 @@ import jp.ac.tachibana.food_survey.http.middleware.AuthenticationMiddleware.{
   defaultAuthDetailsTransformer,
   respondentOnlyAuthDetailsTransformer
 }
-import jp.ac.tachibana.food_survey.services.auth.{domain, AuthenticationService}
-import jp.ac.tachibana.food_survey.services.auth.domain.{AuthDetails, AuthToken}
+import jp.ac.tachibana.food_survey.programs.auth.AuthenticationProgram
 
 class AuthenticationMiddleware[F[_]: Monad](
   authenticationConfig: HttpAuthenticationConfig,
-  authenticationService: AuthenticationService[F])
+  authenticationProgram: AuthenticationProgram[F])
     extends Http4sDsl[F]:
 
   // todo: fast middleware that doesn't load the user?
@@ -69,7 +68,7 @@ class AuthenticationMiddleware[F[_]: Monad](
       for {
         cookie <- OptionT.fromOption(request.cookies.find(_.name === authenticationTokenCookieName))
         authToken = AuthToken(cookie.content)
-        user <- OptionT(authenticationService.authenticate(authToken).map(_.toOption))
+        user <- OptionT(authenticationProgram.authenticate(authToken).map(_.toOption))
         result <- OptionT.fromOption(authDetailsTransformer(authToken, user))
       } yield result
     }

@@ -2,10 +2,8 @@ package jp.ac.tachibana.food_survey.services.auth
 
 import java.security.SecureRandom
 import java.util.Base64
-
 import cats.effect.Sync
-
-import jp.ac.tachibana.food_survey.services.auth.domain.AuthToken
+import jp.ac.tachibana.food_survey.domain.auth.AuthToken
 
 class DefaultAuthTokenGenerator[F[_]: Sync](
   random: SecureRandom,

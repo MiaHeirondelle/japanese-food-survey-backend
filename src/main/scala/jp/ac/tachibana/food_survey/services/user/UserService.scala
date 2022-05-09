@@ -10,4 +10,4 @@ trait UserService[F[_]]:
 
   def getAllByRole(role: User.Role): F[List[User]]
 
-  def saveRespondentData(respondentData: RespondentData): F[Unit]
+  def submitRespondentData(respondentData: RespondentData): F[Unit]

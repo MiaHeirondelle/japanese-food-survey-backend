@@ -34,7 +34,7 @@ trait UserInstances:
 
   implicit val respondentDataSexMeta: Meta[RespondentData.Sex] =
     pgEnumStringOpt[RespondentData.Sex](
-      "user_sex",
+      "respondent_sex",
       {
         case "male"   => Some(RespondentData.Sex.Male)
         case "female" => Some(RespondentData.Sex.Female)

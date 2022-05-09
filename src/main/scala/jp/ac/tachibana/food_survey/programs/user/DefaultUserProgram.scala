@@ -4,8 +4,7 @@ import cats.Monad
 import cats.syntax.applicative.*
 import cats.syntax.flatMap.*
 import cats.syntax.functor.*
-
-import jp.ac.tachibana.food_survey.domain.user.{User, UserCredentials}
+import jp.ac.tachibana.food_survey.domain.user.{RespondentData, User, UserCredentials}
 import jp.ac.tachibana.food_survey.services.auth.AuthenticationService
 import jp.ac.tachibana.food_survey.services.user.UserService
 
@@ -25,6 +24,9 @@ class DefaultUserProgram[F[_]: Monad](
 
   override def getAllByRole(role: User.Role): F[List[User]] =
     userService.getAllByRole(role)
+
+  override def submitRespondentData(respondentData: RespondentData): F[Unit] =
+    userService.submitRespondentData(respondentData)
 
   private def generateUser(
     name: String,

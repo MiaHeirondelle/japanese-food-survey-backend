@@ -20,7 +20,7 @@ class DefaultUserService[F[_]: Sync](
   override def getAllByRole(role: User.Role): F[List[User]] =
     userRepository.getAllByRole(role)
 
-  override def saveRespondentData(respondentData: RespondentData): F[Unit] =
+  override def submitRespondentData(respondentData: RespondentData): F[Unit] =
     respondentDataRepository.insert(respondentData)
 
   private def generateUser(

@@ -20,6 +20,10 @@ trait SessionService[F[_]]:
 
   def begin(admin: User.Admin): F[Either[SessionService.BeginSessionError, Session.InProgress]]
 
+  def pause: F[Either[SessionService.PauseSessionError, SessionService.SessionElementState.Paused]]
+
+  def resume: F[Either[SessionService.ResumeSessionError, SessionService.NonPendingSessionElementState]]
+
   def getCurrentElementState: F[Either[SessionService.GetCurrentElementStateError, SessionService.SessionElementState]]
 
   def provideAnswer(
@@ -46,6 +50,9 @@ object SessionService:
   object SessionElementState:
 
     case class BeforeFirstElement(session: Session.InProgress) extends SessionElementState
+    case class Paused(pausedState: SessionService.NonPendingSessionElementState) extends SessionElementState {
+      override def session: Session.InProgressOrFinished = pausedState.session
+    }
     case class Question(
       session: Session.InProgress,
       state: SessionService.QuestionState,
@@ -81,6 +88,16 @@ object SessionService:
   object BeginSessionError:
     case object WrongSessionStatus extends SessionService.BeginSessionError
     case object InvalidTemplate extends SessionService.BeginSessionError
+
+  sealed trait PauseSessionError
+
+  object PauseSessionError:
+    case object WrongSessionStatus extends SessionService.PauseSessionError
+
+  sealed trait ResumeSessionError
+
+  object ResumeSessionError:
+    case object WrongSessionStatus extends SessionService.ResumeSessionError
 
   sealed trait GetCurrentElementStateError
 

@@ -14,6 +14,8 @@ object OutputSessionMessage:
 
   case class SessionBegan(session: Session.InProgress) extends OutputSessionMessage
 
+  case object SessionPaused extends OutputSessionMessage
+
   case class BasicQuestionSelected(element: SessionElement.Question.Basic) extends OutputSessionMessage
 
   case class RepeatedQuestionSelected(

@@ -79,6 +79,28 @@ class DefaultSessionListenerProgram[F[_]: Concurrent](
                 }
             }.value
         }
+      case InputSessionMessage.PauseSession =>
+        user match {
+          case _: User.Respondent =>
+            none.pure[F]
+          case _: User.Admin =>
+            EitherT(sessionService.pause)
+              .semiflatTap(_ => sessionListenerService.stopTick)
+              .value
+              .map(_.toOption.as(OutputSessionMessage.SessionPaused))
+        }
+
+      case InputSessionMessage.ResumeSession =>
+        user match {
+          case _: User.Respondent =>
+            none.pure[F]
+          case _: User.Admin =>
+            EitherT(sessionService.resume)
+              .semiflatMap(processNonPendingElementState)
+              .value
+              .map(_.toOption)
+        }
+
       case InputSessionMessage.ProvideIntermediateAnswer(questionId, scaleValue, comment) =>
         session match {
           case s: Session.InProgress =>

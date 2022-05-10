@@ -20,6 +20,8 @@ trait SessionListenerService[F[_]]:
   // todo: errors
   def broadcast(message: OutputSessionMessage): F[Unit]
 
+  def isTickActive: F[Boolean]
+
   // todo: errors, tick id?
   def tickBroadcast(
     tick: FiniteDuration,

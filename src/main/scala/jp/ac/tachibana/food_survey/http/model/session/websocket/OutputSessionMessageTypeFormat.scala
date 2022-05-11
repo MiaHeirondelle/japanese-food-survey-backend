@@ -3,8 +3,8 @@ package jp.ac.tachibana.food_survey.http.model.session.websocket
 import io.circe.Encoder
 
 enum OutputSessionMessageTypeFormat:
-  case UserJoined, SessionBegan, TimerTick, BasicQuestionSelected, RepeatedQuestionSelected, BasicQuestionReviewSelected,
-  RepeatedQuestionReviewSelected, TextSelected, SessionFinished
+  case UserJoined, SessionBegan, SessionPaused, TimerTick, BasicQuestionSelected, RepeatedQuestionSelected,
+  BasicQuestionReviewSelected, RepeatedQuestionReviewSelected, TextSelected, SessionFinished
 
 object OutputSessionMessageTypeFormat:
 
@@ -14,6 +14,8 @@ object OutputSessionMessageTypeFormat:
         "user_joined"
       case OutputSessionMessageTypeFormat.SessionBegan =>
         "session_began"
+      case OutputSessionMessageTypeFormat.SessionPaused =>
+        "session_paused"
       case OutputSessionMessageTypeFormat.TimerTick =>
         "timer_tick"
       case OutputSessionMessageTypeFormat.BasicQuestionSelected =>

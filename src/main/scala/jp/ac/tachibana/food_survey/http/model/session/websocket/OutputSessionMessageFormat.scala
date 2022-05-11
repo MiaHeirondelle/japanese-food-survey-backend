@@ -21,6 +21,9 @@ object OutputSessionMessageFormat:
         case sb: OutputSessionMessageFormat.SessionBegan =>
           Encoder.AsObject[OutputSessionMessageFormat.SessionBegan].encodeObject(sb)
 
+        case OutputSessionMessageFormat.SessionPaused =>
+          JsonObject.empty
+
         case tt: OutputSessionMessageFormat.TimerTick =>
           Encoder.AsObject[OutputSessionMessageFormat.TimerTick].encodeObject(tt)
 
@@ -52,6 +55,9 @@ object OutputSessionMessageFormat:
       derives Encoder.AsObject
 
   case class SessionBegan(session: SessionFormat) extends OutputSessionMessageFormat(OutputSessionMessageTypeFormat.SessionBegan)
+      derives Encoder.AsObject
+
+  case object SessionPaused extends OutputSessionMessageFormat(OutputSessionMessageTypeFormat.SessionPaused)
       derives Encoder.AsObject
 
   case class TimerTick(time_left_in_ms: Long) extends OutputSessionMessageFormat(OutputSessionMessageTypeFormat.TimerTick)
@@ -104,6 +110,9 @@ object OutputSessionMessageFormat:
           OutputSessionMessageFormat.SessionBegan(
             SessionFormat.fromDomain(session)
           ))
+
+      case OutputSessionMessage.SessionPaused =>
+        jsonToSocketFrame(OutputSessionMessageFormat.SessionPaused)
 
       case OutputSessionMessage.TimerTick(remainingTimeMs) =>
         jsonToSocketFrame(

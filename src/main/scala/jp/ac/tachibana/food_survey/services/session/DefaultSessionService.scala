@@ -9,12 +9,12 @@ import cats.syntax.functor.*
 import cats.syntax.option.*
 import cats.syntax.traverse.*
 import cats.{Applicative, Monad}
-
 import jp.ac.tachibana.food_survey.domain.question.QuestionAnswer
 import jp.ac.tachibana.food_survey.domain.session.Session
 import jp.ac.tachibana.food_survey.domain.user.User
 import jp.ac.tachibana.food_survey.persistence.session.{SessionRepository, SessionTemplateRepository}
 import jp.ac.tachibana.food_survey.persistence.user.UserRepository
+import jp.ac.tachibana.food_survey.services.session.SessionService.SessionElementState
 import jp.ac.tachibana.food_survey.services.session.managers.*
 import jp.ac.tachibana.food_survey.services.session.managers.InProgressSessionManager.Error
 
@@ -101,6 +101,18 @@ class DefaultSessionService[F[_]: Monad](
           SessionService.BeginSessionError.WrongSessionStatus.asLeft[Session.InProgress].pure[F]
       }
       .getOrElse(SessionService.BeginSessionError.WrongSessionStatus.asLeft[Session.InProgress])
+
+  override def pause: F[Either[SessionService.PauseSessionError, SessionElementState.Paused]] =
+    inProgressSessionManager.pause
+      .map(_.leftMap { case InProgressSessionManager.Error.IncorrectSessionState =>
+        SessionService.PauseSessionError.WrongSessionStatus
+      })
+
+  override def resume: F[Either[SessionService.ResumeSessionError, SessionService.NonPendingSessionElementState]] =
+    inProgressSessionManager.resume
+      .map(_.leftMap { case InProgressSessionManager.Error.IncorrectSessionState =>
+        SessionService.ResumeSessionError.WrongSessionStatus
+      })
 
   override def getCurrentElementState: F[Either[SessionService.GetCurrentElementStateError, SessionService.SessionElementState]] =
     inProgressSessionManager.getCurrentState

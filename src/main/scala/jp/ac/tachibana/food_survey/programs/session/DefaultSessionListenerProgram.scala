@@ -60,6 +60,8 @@ class DefaultSessionListenerProgram[F[_]: Concurrent](
                 elementSelectedMessage(s.session)
               case s: SessionService.SessionElementState.BeforeFirstElement =>
                 elementSelectedMessage(s.session)
+              case s: SessionService.SessionElementState.Paused =>
+                OutputSessionMessage.SessionPaused
             }.value
 
           case _: User.Respondent =>
@@ -77,8 +79,33 @@ class DefaultSessionListenerProgram[F[_]: Concurrent](
                   case s: Session.Finished =>
                     OutputSessionMessage.SessionFinished(s).some.pure[F]
                 }
+
+              case _: SessionService.SessionElementState.Paused =>
+                OutputSessionMessage.SessionPaused.some.pure[F]
             }.value
         }
+      case InputSessionMessage.PauseSession =>
+        user match {
+          case _: User.Respondent =>
+            none.pure[F]
+          case _: User.Admin =>
+            EitherT(sessionService.pause)
+              .semiflatTap(_ => sessionListenerService.stopTick)
+              .value
+              .map(_.toOption.as(OutputSessionMessage.SessionPaused))
+        }
+
+      case InputSessionMessage.ResumeSession =>
+        user match {
+          case _: User.Respondent =>
+            none.pure[F]
+          case _: User.Admin =>
+            EitherT(sessionService.resume)
+              .semiflatMap(processNonPendingElementState)
+              .value
+              .map(_.toOption)
+        }
+
       case InputSessionMessage.ProvideIntermediateAnswer(questionId, scaleValue, comment) =>
         session match {
           case s: Session.InProgress =>
@@ -149,6 +176,9 @@ class DefaultSessionListenerProgram[F[_]: Concurrent](
         processNonPendingElementState(e).map(_.some)
 
       case _: SessionService.SessionElementState.BeforeFirstElement =>
+        none.pure[F]
+
+      case _: SessionService.SessionElementState.Paused =>
         none.pure[F]
     }
 

@@ -26,6 +26,12 @@ object InputSessionMessageFormat:
           case InputSessionMessageTypeFormat.ReadyToProceed =>
             InputSessionMessageFormat.ReadyToProceed.asRight
 
+          case InputSessionMessageTypeFormat.ResumeSession =>
+            InputSessionMessageFormat.ResumeSession.asRight
+
+          case InputSessionMessageTypeFormat.PauseSession =>
+            InputSessionMessageFormat.PauseSession.asRight
+
           case InputSessionMessageTypeFormat.ProvideIntermediateAnswer =>
             Decoder[InputSessionMessageFormat.ProvideIntermediateAnswer].apply(cursor)
 
@@ -37,6 +43,8 @@ object InputSessionMessageFormat:
 
   case object BeginSession extends InputSessionMessageFormat
   case object ReadyToProceed extends InputSessionMessageFormat
+  case object PauseSession extends InputSessionMessageFormat
+  case object ResumeSession extends InputSessionMessageFormat
   case class ProvideIntermediateAnswer(
     question_id: String,
     scale_value: Option[Int],
@@ -68,6 +76,12 @@ object InputSessionMessageFormat:
 
         case InputSessionMessageFormat.ReadyToProceed =>
           InputSessionMessage.ReadyToProceed
+
+        case InputSessionMessageFormat.PauseSession =>
+          InputSessionMessage.PauseSession
+
+        case InputSessionMessageFormat.ResumeSession =>
+          InputSessionMessage.ResumeSession
 
         case InputSessionMessageFormat.ProvideIntermediateAnswer(questionId, scaleValue, comment) =>
           InputSessionMessage.ProvideIntermediateAnswer(

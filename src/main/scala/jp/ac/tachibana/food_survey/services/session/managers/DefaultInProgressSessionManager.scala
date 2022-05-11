@@ -46,9 +46,46 @@ class DefaultInProgressSessionManager[F[_]: Functor] private (ref: Ref[F, Option
             errorStateTransformationResult(state)
         }))
 
+  override def pause: F[Either[InProgressSessionManager.Error, SessionService.SessionElementState.Paused]] =
+    modifyNonEmpty(state =>
+      mapInProgressSession(state) { session =>
+        state.transition match {
+          case DefaultInProgressSessionManager.TransitionState.NotTransitioning =>
+            val newState = state.copy(transition = DefaultInProgressSessionManager.TransitionState.Paused)
+            (newState.some, SessionService.SessionElementState.Paused(currentSessionElementState(session)).asRight)
+
+          case _: DefaultInProgressSessionManager.TransitionState.FirstElement |
+              DefaultInProgressSessionManager.TransitionState.Paused =>
+            (state.some, InProgressSessionManager.Error.IncorrectSessionState.asLeft[SessionService.SessionElementState.Paused])
+        }
+      })
+
+  override def resume: F[Either[InProgressSessionManager.Error, SessionService.NonPendingSessionElementState]] =
+    modifyNonEmpty(state =>
+      mapInProgressSession(state) { session =>
+        state.transition match {
+          case DefaultInProgressSessionManager.TransitionState.Paused =>
+            val newState = state.copy(transition = DefaultInProgressSessionManager.TransitionState.NotTransitioning)
+            (newState.some, currentSessionElementState(session).asRight)
+
+          case _: DefaultInProgressSessionManager.TransitionState.FirstElement |
+              DefaultInProgressSessionManager.TransitionState.NotTransitioning =>
+            (
+              state.some,
+              InProgressSessionManager.Error.IncorrectSessionState.asLeft[SessionService.NonPendingSessionElementState])
+        }
+      })
+
   override def forceTransitionToNextElement
     : F[Either[InProgressSessionManager.Error, SessionService.NonPendingSessionElementState]] =
-    modifyNonEmpty(state => mapInProgressSession(state)(transitionSessionToNextElementState))
+    modifyNonEmpty(state =>
+      state.transition match {
+        case DefaultInProgressSessionManager.TransitionState.Paused =>
+          (state.some, InProgressSessionManager.Error.IncorrectSessionState.asLeft[SessionService.NonPendingSessionElementState])
+
+        case _ =>
+          mapInProgressSession(state)(transitionSessionToNextElementState)
+      })
 
   override def transitionToFirstElement(
     respondentId: User.Id): F[Either[InProgressSessionManager.Error, SessionService.SessionElementState]] =
@@ -64,7 +101,8 @@ class DefaultInProgressSessionManager[F[_]: Functor] private (ref: Ref[F, Option
               val newState = state.copy(transition)
               (newState.some, currentElementState(newState).asRight)
 
-          case DefaultInProgressSessionManager.TransitionState.NotTransitioning =>
+          case DefaultInProgressSessionManager.TransitionState.NotTransitioning |
+              DefaultInProgressSessionManager.TransitionState.Paused =>
             (state.some, InProgressSessionManager.Error.IncorrectSessionState.asLeft[SessionService.SessionElementState])
         }
       })
@@ -77,7 +115,7 @@ class DefaultInProgressSessionManager[F[_]: Functor] private (ref: Ref[F, Option
           DefaultInProgressSessionManager.TransitionState.NotTransitioning,
           inProgress
         )
-        val elementState = nonPendingCurrentSessionElementState(inProgress)
+        val elementState = currentSessionElementState(inProgress)
         (newState.some, elementState.asRight)
 
       case finished: Session.Finished =>
@@ -112,6 +150,7 @@ object DefaultInProgressSessionManager:
 
   private object TransitionState:
     case class FirstElement(usersReadyToTransition: Set[User.Id]) extends DefaultInProgressSessionManager.TransitionState
+    case object Paused extends DefaultInProgressSessionManager.TransitionState
     case object NotTransitioning extends DefaultInProgressSessionManager.TransitionState
 
   private case class InternalState(
@@ -125,14 +164,17 @@ object DefaultInProgressSessionManager:
           case _: DefaultInProgressSessionManager.TransitionState.FirstElement =>
             SessionService.SessionElementState.BeforeFirstElement(inProgress)
 
+          case DefaultInProgressSessionManager.TransitionState.Paused =>
+            SessionService.SessionElementState.Paused(currentSessionElementState(inProgress))
+
           case DefaultInProgressSessionManager.TransitionState.NotTransitioning =>
-            nonPendingCurrentSessionElementState(inProgress)
+            currentSessionElementState(inProgress)
         }
       case finished: Session.Finished =>
         SessionService.SessionElementState.Finished(finished)
     }
 
-  private def nonPendingCurrentSessionElementState(session: Session.InProgress): SessionService.NonPendingSessionElementState =
+  private def currentSessionElementState(session: Session.InProgress): SessionService.NonPendingSessionElementState =
     session.currentElement match {
       case e: SessionElement.Question =>
         SessionService.SessionElementState.Question(session, SessionService.QuestionState.Pending, e)

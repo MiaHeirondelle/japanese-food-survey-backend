@@ -52,6 +52,9 @@ class DefaultSessionListenerService[F[_]: Temporal](
   override def broadcast(message: OutputSessionMessage): F[Unit] =
     currentSessionStateManager.getCurrentSession.flatMap(_.traverse(broadcastMessage(message))).void
 
+  override def isTickActive: F[Boolean] =
+    ticksRef.get.map(_.nonEmpty)
+
   // todo: fiber stop errors
   override def tickBroadcast(
     tick: FiniteDuration,

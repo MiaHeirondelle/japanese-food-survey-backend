@@ -14,6 +14,10 @@ trait InProgressSessionManager[F[_]]:
   def provideAnswer(
     answer: QuestionAnswer): F[Either[InProgressSessionManager.Error, SessionService.SessionElementState.Question]]
 
+  def pause: F[Either[InProgressSessionManager.Error, SessionService.SessionElementState.Paused]]
+
+  def resume: F[Either[InProgressSessionManager.Error, SessionService.NonPendingSessionElementState]]
+
   /** Immediately transitions to then ext element.
     */
   def forceTransitionToNextElement: F[Either[InProgressSessionManager.Error, SessionService.NonPendingSessionElementState]]

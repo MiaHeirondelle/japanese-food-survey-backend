@@ -7,6 +7,8 @@ sealed trait InputSessionMessage
 object InputSessionMessage:
   case object BeginSession extends InputSessionMessage
   case object ReadyToProceed extends InputSessionMessage
+  case object PauseSession extends InputSessionMessage
+  case object ResumeSession extends InputSessionMessage
   case class ProvideIntermediateAnswer(
     questionId: Question.Id,
     scaleValue: Option[QuestionAnswer.ScaleValue],

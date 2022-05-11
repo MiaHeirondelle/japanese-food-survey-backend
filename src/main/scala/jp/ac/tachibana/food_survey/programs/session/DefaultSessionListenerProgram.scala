@@ -60,6 +60,8 @@ class DefaultSessionListenerProgram[F[_]: Concurrent](
                 elementSelectedMessage(s.session)
               case s: SessionService.SessionElementState.BeforeFirstElement =>
                 elementSelectedMessage(s.session)
+              case s: SessionService.SessionElementState.Paused =>
+                OutputSessionMessage.SessionPaused
             }.value
 
           case _: User.Respondent =>
@@ -77,6 +79,9 @@ class DefaultSessionListenerProgram[F[_]: Concurrent](
                   case s: Session.Finished =>
                     OutputSessionMessage.SessionFinished(s).some.pure[F]
                 }
+
+              case _: SessionService.SessionElementState.Paused =>
+                OutputSessionMessage.SessionPaused.some.pure[F]
             }.value
         }
       case InputSessionMessage.PauseSession =>
@@ -171,6 +176,9 @@ class DefaultSessionListenerProgram[F[_]: Concurrent](
         processNonPendingElementState(e).map(_.some)
 
       case _: SessionService.SessionElementState.BeforeFirstElement =>
+        none.pure[F]
+
+      case _: SessionService.SessionElementState.Paused =>
         none.pure[F]
     }
 

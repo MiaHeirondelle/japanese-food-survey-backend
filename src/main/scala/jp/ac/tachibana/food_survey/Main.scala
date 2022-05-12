@@ -10,12 +10,14 @@ import jp.ac.tachibana.food_survey.http.middleware.AuthenticationMiddleware
 import jp.ac.tachibana.food_survey.http.routes.{AuthenticationRoutes, SessionRoutes, UserRoutes}
 import jp.ac.tachibana.food_survey.persistence.DatabaseTransactor
 import jp.ac.tachibana.food_survey.persistence.auth.*
+import jp.ac.tachibana.food_survey.persistence.event_log.*
 import jp.ac.tachibana.food_survey.persistence.session.*
 import jp.ac.tachibana.food_survey.persistence.user.{PostgresRespondentDataRepository, PostgresUserRepository}
 import jp.ac.tachibana.food_survey.programs.auth.DefaultAuthenticationProgram
 import jp.ac.tachibana.food_survey.programs.session.{DefaultSessionListenerProgram, DefaultSessionProgram}
 import jp.ac.tachibana.food_survey.programs.user.DefaultUserProgram
 import jp.ac.tachibana.food_survey.services.auth.DefaultAuthenticationService
+import jp.ac.tachibana.food_survey.services.event_log.DefaultEventLogService
 import jp.ac.tachibana.food_survey.services.session.managers.*
 import jp.ac.tachibana.food_survey.services.session.{DefaultSessionListenerService, DefaultSessionService}
 import jp.ac.tachibana.food_survey.services.user.DefaultUserService
@@ -34,6 +36,7 @@ object Main extends IOApp.Simple:
         val respondentDataRepository = new PostgresRespondentDataRepository[IO]()
         val sessionRepository = new PostgresSessionRepository[IO]()
         val sessionTemplateRepository = new PostgresSessionTemplateRepository[IO]
+        val eventLogRepository = new PostgresEventLogRepository[IO]
 
         for {
           awaitingUsersSessionManager <- DefaultAwaitingUsersSessionManager.create[IO]
@@ -52,11 +55,12 @@ object Main extends IOApp.Simple:
             inProgressSessionManager)
           sessionListenerService <- DefaultSessionListenerService.create[IO](currentSessionStateManager)
           userService = new DefaultUserService[IO](userRepository, respondentDataRepository)
+          eventLogService = new DefaultEventLogService[IO](eventLogRepository)
 
           userProgram = new DefaultUserProgram[IO](authenticationService, userService)
           sessionProgram = new DefaultSessionProgram[IO](sessionService)
           sessionListenerProgram = new DefaultSessionListenerProgram[IO](sessionService, sessionListenerService)
-          authenticationProgram = new DefaultAuthenticationProgram[IO](authenticationService)
+          authenticationProgram = new DefaultAuthenticationProgram[IO](authenticationService, eventLogService)
 
           authenticationMiddleware =
             new AuthenticationMiddleware[IO](

@@ -1,12 +1,18 @@
 package jp.ac.tachibana.food_survey.programs.auth
 
-import cats.Functor
+import cats.Monad
+import cats.instances.either.*
+import cats.syntax.flatMap.*
 import cats.syntax.functor.*
+import cats.syntax.traverse.*
 import jp.ac.tachibana.food_survey.domain.auth.{AuthDetails, AuthToken}
 import jp.ac.tachibana.food_survey.domain.user.{User, UserCredentials}
 import jp.ac.tachibana.food_survey.services.auth.AuthenticationService
+import jp.ac.tachibana.food_survey.services.event_log.EventLogService
 
-class DefaultAuthenticationProgram[F[_]: Functor](authenticationService: AuthenticationService[F])
+class DefaultAuthenticationProgram[F[_]: Monad](
+  authenticationService: AuthenticationService[F],
+  eventLogService: EventLogService[F])
     extends AuthenticationProgram[F]:
 
   override def saveCredentials(
@@ -17,6 +23,7 @@ class DefaultAuthenticationProgram[F[_]: Functor](authenticationService: Authent
   override def login(credentials: UserCredentials): F[Either[AuthenticationProgram.LoginError, AuthDetails]] =
     authenticationService
       .login(credentials)
+      .flatTap(_.traverse(d => eventLogService.userLogin(d.user.id)))
       .map(_.left.map { case AuthenticationService.LoginError.InvalidCredentials =>
         AuthenticationProgram.LoginError.InvalidCredentials
       })

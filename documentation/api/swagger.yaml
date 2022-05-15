@@ -1,68 +1,230 @@
 openapi: 3.0.0
 info:
-  title: Japanese Food Survey Backend API
   description: An API for the Japanese Food Survey Backend service.
   version: 1.0.0
-servers:
-- url: https://virtserver.swaggerhub.com/J0kerPanda/japanese_food_survey/1.0.0
-  description: SwaggerHub API Auto Mocking
+  title: Japanese Food Survey Backend API
 tags:
-- name: admins
-  description: Secured Admin-only calls.
-- name: users
-  description: Operations available to regular users.
+  - name: admins
+    description: Secured Admin-only calls.
+  - name: respondents
+    description: Secured Respondent-only calls.
+  - name: users
+    description: Secured logged in user-only calls.
+  - name: unsecured
+    description: Operations available to everyone.
 paths:
-  /user/log_in:
+  /auth/login:
     post:
       tags:
-      - users
-      summary: allows users to log into the system.
-      description: |
-        Allows the users to log into the system by providing their credentials in the Authorization header.
-      operationId: userLogIn
+        - unsecured
+      summary: Log into the system.
+      operationId: authLogIn
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LoginForm'
       responses:
-        "200":
+        '200':
           description: |
             Successfully authenticated.
             The session ID is returned in a cookie named `JFSBSESSIONID`. You need to include this cookie in subsequent requests.
           headers:
             Set-Cookie:
-              style: simple
-              explode: false
               schema:
                 type: string
                 example: JFSBSESSIONID=abcde12345; Path=/; Secure
-        "400":
-          description: Authorization header was not submitted.
-        "401":
+        '400':
+          description: Request body is invalid.
+        '403':
           description: Incorrect login details.
+  /auth/check:
+    get:
       security:
-      - user_auth: []
-  /user/log_out:
-    post:
+        - token_auth: []
       tags:
-      - users
-      summary: allows users to log out from the system.
-      description: |
-        Allows the users to log out from the system.
-      operationId: userLogOut
+        - users
+      summary: Check user's own details.
+      operationId: authCheck
       responses:
-        "200":
-          description: "Successfully logged out. \nThe user's `JFSBSESSIONID` token\
-            \ is no longer valid.\n"
-        "401":
-          description: The `JFSBSESSIONID` token was not submitted.
-        "403":
-          description: The user is already logged out.
+        '200':
+          description: Successfully got user login details.
+          content:
+            application/json:
+              schema:
+                type: object
+        '404':
+          description: The `JFSBSESSIONID` token was not submitted or invalid.
+  /auth/logout:
+    post:
       security:
-      - token_auth: []
+        - token_auth: []
+      tags:
+        - users
+      summary: Log out the system.
+      operationId: authLogOut
+      responses:
+        '200':
+          description: |
+            Successfully logged out. 
+            The user's `JFSBSESSIONID` token is no longer valid.
+        '404':
+          description: The `JFSBSESSIONID` token was not submitted or invalid.
+  /session/active:
+    get:
+      security:
+        - token_auth: []
+      tags:
+        - users
+      summary: allows users to check active session ifnromation
+      operationId: getActiveSession
+      responses:
+        '200':
+          description: Successfully got active session information.
+          content:
+            application/json:
+              schema:
+                type: object
+        '404':
+          description: The `JFSBSESSIONID` token was not submitted or invalid.
+  /session/connect:
+    get:
+      security:
+        - token_auth: []
+      tags:
+        - users
+      summary: Establish a websocket connection with the active session.
+      operationId: connectToSessionWs
+      responses:
+        '200':
+          description: Successfully established a websocket connection.
+        '404':
+          description: The `JFSBSESSIONID` token was not submitted or invalid.
+  /session/join:
+    post:
+      security:
+        - token_auth: []
+      tags:
+        - respondents
+      summary: Join the active session (before establishing a connection).
+      operationId: joinSession
+      responses:
+        '200':
+          description: Successfully joined the active session.
+          content:
+            application/json:
+              schema:
+                type: object
+        '404':
+          description: The `JFSBSESSIONID` token was not submitted or invalid.
+  /session/create:
+    post:
+      security:
+        - token_auth: []
+      tags:
+        - admins
+      summary: Create a new session (requires connecting to it afterwards).
+      operationId: createSession
+      responses:
+        '200':
+          description: Successfully created a new session.
+          content:
+            application/json:
+              schema:
+                type: object
+        '404':
+          description: The `JFSBSESSIONID` token was not submitted or invalid.
+  /session/stop:
+    post:
+      security:
+        - token_auth: []
+      tags:
+        - admins
+      summary: Force stop the active session (if any) without saving data.
+      operationId: stopSession
+      responses:
+        '200':
+          description: Successfully stopped the session.
+        '404':
+          description: The `JFSBSESSIONID` token was not submitted or invalid.
+  /user/create:
+    put:
+      tags:
+        - admins
+      summary: Create a new user.
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CreateUserForm'
+      responses:
+        '201':
+          description: Successfully created a ne user.
+        '400':
+          description: Request body is invalid.
+        '404':
+          description: The `JFSBSESSIONID` token was not submitted or invalid.
+  /user/respondent/get/all:
+    get:
+      tags:
+        - admins
+      summary: Get a list of existing respondents.
+      operationId: getAllRespondents
+      responses:
+        '200':
+          description: Successfully got a list of respondents.
+          content:
+            application/json:
+              schema:
+                type: object
+        '404':
+          description: The `JFSBSESSIONID` token was not submitted or invalid.
+  /user/respondent/data:
+    put:
+      tags:
+        - respondents
+      summary: Submit respondent data (can only be done once).
+      operationId: submitRespondentData
+      responses:
+        '200':
+          description: Acknowledged the request, but the data was not submitted.
+        '201':
+          description: Successfully submitted respondent data.
+        '404':
+          description: The `JFSBSESSIONID` token was not submitted or invalid.
+
+
 components:
-  schemas: {}
   securitySchemes:
-    user_auth:
-      type: http
-      scheme: basic
     token_auth:
       type: apiKey
-      name: JFSBSESSIONID
       in: cookie
+      name: JFSBSESSIONID
+  schemas:
+    LoginForm:
+      type: object
+      properties:
+        login:
+          type: string
+          example: 'test'
+        password:
+          type: string
+          example: 'test'
+    CreateUserForm:
+      type: object
+      properties:
+        login:
+          type: string
+          example: 'test'
+        password:
+          type: string
+          example: 'test'
+        name:
+          type: string
+          example: 'Tanaka Taro'
+        role:
+          type: string
+          enum: [ 'admin', 'respondent' ]

@@ -3,8 +3,8 @@ CREATE TYPE event_type AS ENUM ('user_login', 'respondent_data_submit', 'session
 CREATE TABLE event_log (
   id             SERIAL PRIMARY KEY,
   event_type     event_type NOT NULL,
-  session_number INT REFERENCES "survey_session" NULL,
-  user_id        user_id REFERENCES "user" (id) NULL,
-  question_id    question_id REFERENCES "question" (id) NULL,
+  session_number INT NULL,
+  user_id        user_id NULL,
+  question_id    question_id NULL,
   timestamp_utc TIMESTAMP NOT NULL
 );

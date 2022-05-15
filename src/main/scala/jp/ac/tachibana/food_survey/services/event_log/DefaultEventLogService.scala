@@ -19,6 +19,18 @@ class DefaultEventLogService[F[_]: MonadThrow: Clock](repository: EventLogReposi
   override def userLogin(userId: User.Id): F[Unit] =
     constructEventLog(EventLog.EventType.UserLogin, userId = userId.some).flatMap(persistEventLog)
 
+  override def respondentDataSubmit(userId: User.Id): F[Unit] =
+    constructEventLog(EventLog.EventType.RespondentDataSubmit, userId = userId.some).flatMap(persistEventLog)
+
+  override def sessionCreate(sessionNumber: Session.Number): F[Unit] =
+    constructEventLog(EventLog.EventType.SessionCreate, sessionNumber = sessionNumber.some).flatMap(persistEventLog)
+
+  override def sessionJoin(
+    sessionNumber: Session.Number,
+    respondentId: User.Id): F[Unit] =
+    constructEventLog(EventLog.EventType.SessionCreate, sessionNumber = sessionNumber.some, userId = userId.some)
+      .flatMap(persistEventLog)
+
   private def constructEventLog(
     eventType: EventLog.EventType,
     sessionNumber: Option[Session.Number] = none,

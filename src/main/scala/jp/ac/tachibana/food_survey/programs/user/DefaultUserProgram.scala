@@ -7,10 +7,12 @@ import cats.syntax.functor.*
 import jp.ac.tachibana.food_survey.domain.user.{RespondentData, User, UserCredentials}
 import jp.ac.tachibana.food_survey.services.auth.AuthenticationService
 import jp.ac.tachibana.food_survey.services.user.UserService
+import jp.ac.tachibana.food_survey.services.event_log.EventLogService
 
 class DefaultUserProgram[F[_]: Monad](
   authenticationService: AuthenticationService[F],
-  userService: UserService[F])
+  userService: UserService[F],
+  eventLogService: EventLogService[F])
     extends UserProgram[F]:
 
   override def create(
@@ -26,7 +28,9 @@ class DefaultUserProgram[F[_]: Monad](
     userService.getAllByRole(role)
 
   override def submitRespondentData(respondentData: RespondentData): F[Unit] =
-    userService.submitRespondentData(respondentData)
+    userService
+      .submitRespondentData(respondentData)
+      .flatTap(_ => eventLogService.respondentDataSubmit(respondentData.userId))
 
   private def generateUser(
     name: String,

@@ -1,15 +1,20 @@
 package jp.ac.tachibana.food_survey.programs.session
 
-import cats.Functor
+import cats.Monad
 import cats.data.NonEmptyList
 import cats.syntax.functor.*
-
+import cats.syntax.flatMap.*
 import jp.ac.tachibana.food_survey.domain.session.Session
 import jp.ac.tachibana.food_survey.domain.user.User
 import jp.ac.tachibana.food_survey.services.session.SessionService
-import jp.ac.tachibana.food_survey.services.session.SessionService.CreateSessionError
+import jp.ac.tachibana.food_survey.services.event_log.EventLogService
+import cats.syntax.traverse.*
+import cats.instances.either.*
 
-class DefaultSessionProgram[F[_]: Functor](sessionService: SessionService[F]) extends SessionProgram[F]:
+class DefaultSessionProgram[F[_]: Monad](
+  sessionService: SessionService[F],
+  eventLogService: EventLogService[F])
+    extends SessionProgram[F]:
 
   override def getActiveSession: F[Option[Session.NotFinished]] =
     sessionService.getActiveSession
@@ -19,6 +24,7 @@ class DefaultSessionProgram[F[_]: Functor](sessionService: SessionService[F]) ex
     respondents: NonEmptyList[User.Id]): F[Either[SessionProgram.SessionCreationError, Session.AwaitingUsers]] =
     sessionService
       .create(creator, respondents)
+      .flatTap(_.traverse(s => eventLogService.sessionCreate(s.number)))
       .map(_.left.map {
         case SessionService.CreateSessionError.InvalidParticipants =>
           SessionProgram.SessionCreationError.InvalidParticipants
@@ -29,6 +35,7 @@ class DefaultSessionProgram[F[_]: Functor](sessionService: SessionService[F]) ex
   override def join(respondent: User.Respondent): F[Either[SessionProgram.SessionJoinError, Session.NotBegan]] =
     sessionService
       .join(respondent)
+      .flatTap(_.traverse(s => eventLogService.sessionJoin(s.number, respondent.id)))
       .map(_.left.map {
         case SessionService.JoinSessionError.InvalidParticipant =>
           SessionProgram.SessionJoinError.InvalidParticipant

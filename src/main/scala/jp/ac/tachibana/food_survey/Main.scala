@@ -57,8 +57,8 @@ object Main extends IOApp.Simple:
           userService = new DefaultUserService[IO](userRepository, respondentDataRepository)
           eventLogService = new DefaultEventLogService[IO](eventLogRepository)
 
-          userProgram = new DefaultUserProgram[IO](authenticationService, userService)
-          sessionProgram = new DefaultSessionProgram[IO](sessionService)
+          userProgram = new DefaultUserProgram[IO](authenticationService, userService, eventLogService)
+          sessionProgram = new DefaultSessionProgram[IO](sessionService, eventLogService)
           sessionListenerProgram = new DefaultSessionListenerProgram[IO](sessionService, sessionListenerService)
           authenticationProgram = new DefaultAuthenticationProgram[IO](authenticationService, eventLogService)
 

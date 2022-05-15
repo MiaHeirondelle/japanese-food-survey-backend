@@ -13,6 +13,7 @@ import cats.syntax.traverse.*
 import jp.ac.tachibana.food_survey.domain.question.{Question, QuestionAnswer}
 import jp.ac.tachibana.food_survey.domain.session.{Session, SessionElement}
 import jp.ac.tachibana.food_survey.domain.user.User
+import jp.ac.tachibana.food_survey.services.event_log.EventLogService
 import jp.ac.tachibana.food_survey.services.session.model.*
 import jp.ac.tachibana.food_survey.services.session.{SessionListenerService, SessionService}
 
@@ -20,7 +21,8 @@ import scala.concurrent.duration.*
 
 class DefaultSessionListenerProgram[F[_]: Concurrent](
   sessionService: SessionService[F],
-  sessionListenerService: SessionListenerService[F])
+  sessionListenerService: SessionListenerService[F],
+  eventLogService: EventLogService[F])
     extends SessionListenerProgram[F]:
 
   override def connect[L](
@@ -44,6 +46,7 @@ class DefaultSessionListenerProgram[F[_]: Concurrent](
     message match {
       case InputSessionMessage.BeginSession =>
         OptionT(sessionService.begin(session.admin).map(_.toOption))
+          .semiflatTap(s => eventLogService.sessionBegin(s.number))
           .map[OutputSessionMessage](OutputSessionMessage.SessionBegan.apply)
           .value
       case InputSessionMessage.ReadyToProceed =>
@@ -91,6 +94,7 @@ class DefaultSessionListenerProgram[F[_]: Concurrent](
           case _: User.Admin =>
             EitherT(sessionService.pause)
               .semiflatTap(_ => sessionListenerService.stopTick)
+              .semiflatTap(s => eventLogService.sessionPause(s.session.number))
               .value
               .map(_.toOption.as(OutputSessionMessage.SessionPaused))
         }
@@ -101,6 +105,7 @@ class DefaultSessionListenerProgram[F[_]: Concurrent](
             none.pure[F]
           case _: User.Admin =>
             EitherT(sessionService.resume)
+              .semiflatTap(s => eventLogService.sessionResume(s.session.number))
               .semiflatMap(processNonPendingElementState)
               .value
               .map(_.toOption)
@@ -114,6 +119,7 @@ class DefaultSessionListenerProgram[F[_]: Concurrent](
               .flatMap { question =>
                 val answer = question.toAnswer(session.number, user.id, scaleValue, comment)
                 EitherT(sessionService.provideAnswer(answer)).toOption
+                  .semiflatTap(_ => eventLogService.answerSubmit(answer))
               }
               .value
               .as(none)
@@ -159,7 +165,9 @@ class DefaultSessionListenerProgram[F[_]: Concurrent](
     state match {
       case SessionService.SessionElementState.Finished(session) =>
         // todo: check session only finished once
-        sessionService.finish.as(OutputSessionMessage.SessionFinished(session))
+        sessionService.finish
+          .flatMap(_.traverse(s => eventLogService.sessionFinish(s.number)))
+          .as(OutputSessionMessage.SessionFinished(session))
       case SessionService.SessionElementState.Question(session, state, question) =>
         startSessionElementTimerTicks(question.showDuration)
           .as(questionElementSelectedMessage(session, question))

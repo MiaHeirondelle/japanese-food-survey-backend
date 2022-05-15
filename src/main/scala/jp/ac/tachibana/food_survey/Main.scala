@@ -59,7 +59,7 @@ object Main extends IOApp.Simple:
 
           userProgram = new DefaultUserProgram[IO](authenticationService, userService, eventLogService)
           sessionProgram = new DefaultSessionProgram[IO](sessionService, eventLogService)
-          sessionListenerProgram = new DefaultSessionListenerProgram[IO](sessionService, sessionListenerService)
+          sessionListenerProgram = new DefaultSessionListenerProgram[IO](sessionService, sessionListenerService, eventLogService)
           authenticationProgram = new DefaultAuthenticationProgram[IO](authenticationService, eventLogService)
 
           authenticationMiddleware =

@@ -74,9 +74,11 @@ like [Postman](https://www.postman.com/) or other means of automation to repeate
     --data-urlencode 'password=<USER_PASSWORD>' 
   ```
 - `log out`:
+  ```shell
   curl --location --request POST '<BACKEND_SERVER_URL>/auth/logout' \
   --header 'Content-Type: application/x-www-form-urlencoded' \
   --header 'Cookie: JFSBSESSIONID=<AUTH_COOKIE>'
+  ```
 - `create user`:
   ```shell
   curl --location --request PUT '<BACKEND_SERVER_URL>/user/create' \
@@ -149,7 +151,7 @@ the database connection as follows:
   - `scale_min_bound_caption` - lower scale text to display.
   - `scale_min_bound_caption` - upper scale text to display.
 - `session_template_element` (session structure data):
-  - `element_number` - the session element's sequence number. Numbers should start from 1 and proceed without any gaps (1, 2, 3, 4, ...).
+  - `element_number` - the session element's sequence number. Numbers should form a sequence without any gaps that starts from 1.
   - `type` - one of `question`, `question_review`, `text`.
   - `question_id` - referenced question id (must be provided if the `type` is `question` or `question_review`).
   - `text` - text to display (must be provided if the `type` is `text`).

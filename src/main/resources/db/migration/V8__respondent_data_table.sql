@@ -1,8 +1,8 @@
-CREATE TYPE respondent_sex AS ENUM ('male', 'female');
+CREATE TYPE respondent_sex AS ENUM ('male', 'female', 'other', 'unspecified');
 
 
 CREATE TABLE "respondent_data" (
-  user_id user_id NOT NULL PRIMARY KEY REFERENCES "user" (id),
+  user_id user_id        NOT NULL PRIMARY KEY REFERENCES "user" (id),
   sex     respondent_sex NULL,
-  age     int NULL
+  age     int            NULL
 );

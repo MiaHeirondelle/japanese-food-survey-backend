@@ -8,7 +8,7 @@ case class RespondentData(
 object RespondentData:
 
   enum Sex:
-    case Male, Female
+    case Male, Female, Other, Unspecified
 
   opaque type Age = Int
 

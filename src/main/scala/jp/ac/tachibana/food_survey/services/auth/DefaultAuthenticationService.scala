@@ -40,7 +40,6 @@ class DefaultAuthenticationService[F[_]: Monad: Clock](
     } yield result
 
   override def login(credentials: UserCredentials): F[Either[AuthenticationService.LoginError, AuthDetails]] =
-    // todo: remove tokens if there are too many
     (for {
       matchingCredentials <- OptionT(credentialsRepository.getByLogin(credentials.login.value))
       result <- OptionT
@@ -57,6 +56,7 @@ class DefaultAuthenticationService[F[_]: Monad: Clock](
                   case _: User.Admin      => true.pure[F]
                   case _: User.Respondent => respondentDataRepository.checkRespondentDataExists(user.id)
                 }
+                _ <- authTokenRepository.deleteByUser(user.id)
                 _ <- authTokenRepository.insert(user.id, authTokenHash, Instant.ofEpochMilli(createdAt.toMillis))
               } yield AuthDetails.Generic(authToken, user, userDataPresent)),
           ifFalse = OptionT.none
@@ -79,7 +79,7 @@ class DefaultAuthenticationService[F[_]: Monad: Clock](
   override def logout(token: AuthToken): F[Unit] =
     for {
       tokenHash <- tokenHasher.hash(token)
-      result <- authTokenRepository.delete(tokenHash)
+      result <- authTokenRepository.deleteByToken(tokenHash)
     } yield result
 
 object DefaultAuthenticationService:

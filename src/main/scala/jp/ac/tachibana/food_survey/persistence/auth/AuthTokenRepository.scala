@@ -15,4 +15,6 @@ trait AuthTokenRepository[F[_]]:
 
   def get(tokenHash: Hash): F[Option[User.Id]]
 
-  def delete(tokenHash: Hash): F[Unit]
+  def deleteByToken(tokenHash: Hash): F[Unit]
+
+  def deleteByUser(userId: User.Id): F[Unit]

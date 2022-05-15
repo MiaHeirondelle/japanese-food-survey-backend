@@ -36,13 +36,17 @@ trait UserInstances:
     pgEnumStringOpt[RespondentData.Sex](
       "respondent_sex",
       {
-        case "male"   => Some(RespondentData.Sex.Male)
-        case "female" => Some(RespondentData.Sex.Female)
-        case _        => None
+        case "male"        => Some(RespondentData.Sex.Male)
+        case "female"      => Some(RespondentData.Sex.Female)
+        case "other"       => Some(RespondentData.Sex.Other)
+        case "unspecified" => Some(RespondentData.Sex.Unspecified)
+        case _             => None
       },
       {
-        case RespondentData.Sex.Male   => "male"
-        case RespondentData.Sex.Female => "female"
+        case RespondentData.Sex.Male        => "male"
+        case RespondentData.Sex.Female      => "female"
+        case RespondentData.Sex.Other       => "other"
+        case RespondentData.Sex.Unspecified => "unspecified"
       }
     )
 

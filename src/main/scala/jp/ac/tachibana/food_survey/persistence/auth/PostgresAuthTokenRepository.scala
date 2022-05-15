@@ -28,7 +28,12 @@ class PostgresAuthTokenRepository[F[_]: Async](implicit tr: Transactor[F]) exten
       .option
       .transact(tr)
 
-  override def delete(tokenHash: Hash): F[Unit] =
+  override def deleteByToken(tokenHash: Hash): F[Unit] =
     sql"""DELETE FROM "user_session" WHERE token_hash = $tokenHash""".update.run
+      .transact(tr)
+      .void
+
+  override def deleteByUser(userId: User.Id): F[Unit] =
+    sql"""DELETE FROM "user_session" WHERE user_id = $userId""".update.run
       .transact(tr)
       .void

@@ -9,11 +9,15 @@ Installation instructions:
 - `SBT`: [installation](https://www.scala-sbt.org/download.html)
 - `JDK`: [installation](https://www.oracle.com/java/technologies/downloads/#java11)
 
+Running the project requires a running PostgreSQL database to connect to. This project provides a [docker-compose file](https://docs.docker.com/compose/) to start the database locally. Run
+`docker-compose up` from the project's root directory to launch the database or provide a custom
+database configuration.
+
 Compiling the project:
 `sbt stage`
 
-Running the project:
-`sbt run`
+Running the project locally:
+`HTTP_CORS_ENABLED=true sbt run`
 
 This project uses the third version of the Scala programming language (Scala 3). For more information about using Scala 3 with `SBT`, 
 see the [scala3-example-project](https://github.com/scala/scala3-example-project/blob/main/README.md).
@@ -168,6 +172,7 @@ the database connection as follows:
   - `session_number` - respective session's number.
   - `respondent_id` - respective respondent's id.
   - `question_id` - respective question id.
+  - `previous_question_id` - respective previous question id (filled in if the `type` is `repeated`).
 - `survey_session_participant` (session participant list):
   - `session_number` - respective session's number.
   - `user_id` - respective respondent's id.

@@ -7,20 +7,14 @@ import cats.data.NonEmptyList
 import cats.syntax.show.*
 import doobie.*
 import doobie.implicits.*
-import doobie.postgres.circe.jsonb.implicits.*
 import doobie.postgres.implicits.*
 import io.circe.syntax.*
-import io.circe.{Decoder, Encoder, Json}
 
 import jp.ac.tachibana.food_survey.domain.question.Question as SessionQuestion
 import jp.ac.tachibana.food_survey.domain.session.{Session, SessionElement}
 import jp.ac.tachibana.food_survey.domain.user.User
 import jp.ac.tachibana.food_survey.persistence.formats.QuestionInstances.*
-import jp.ac.tachibana.food_survey.persistence.formats.SessionInstances.{
-  SessionElementPostgresFormat,
-  SessionPostgresFormat,
-  SessionStatePostgresFormat
-}
+import jp.ac.tachibana.food_survey.persistence.formats.SessionInstances.*
 import jp.ac.tachibana.food_survey.persistence.formats.UserInstances.*
 
 trait SessionInstances:
@@ -72,9 +66,8 @@ trait SessionInstances:
 
   implicit val sessionPostgresFormatRead: Read[SessionPostgresFormat.AwaitingUsers] =
     // todo: fix toOption.get
-    Read[(Session.Number, User.Id, SessionPostgresFormat.Status.AwaitingUsers.type, Json)]
-      .map { case (number, adminId, _, state) =>
-        val decodedState = state.as[SessionStatePostgresFormat.AwaitingUsers].toOption.get
+    Read[(Session.Number, User.Id, SessionPostgresFormat.Status.AwaitingUsers.type)]
+      .map { case (number, adminId, _) =>
         SessionPostgresFormat.AwaitingUsers(
           number = number,
           admin = adminId
@@ -82,11 +75,10 @@ trait SessionInstances:
       }
 
   implicit val sessionPostgresFormatWrite: Write[SessionPostgresFormat] =
-    Write[(Session.Number, User.Id, SessionPostgresFormat.Status, Json)]
+    Write[(Session.Number, User.Id, SessionPostgresFormat.Status)]
       .contramap { s =>
-        val encodedState = SessionStatePostgresFormat.encodeJson(s)
         val encodedStatus = SessionPostgresFormat.Status.fromDomain(s.status)
-        (s.number, s.admin, encodedStatus, encodedState)
+        (s.number, s.admin, encodedStatus)
       }
 
   implicit val sessionElementPostgresFormatRead: Read[SessionElementPostgresFormat] =
@@ -136,10 +128,6 @@ object SessionInstances extends SessionInstances:
             SessionPostgresFormat.Status.Finished
         }
 
-    extension (format: SessionPostgresFormat)
-      def asStateJson: Json =
-        SessionStatePostgresFormat.encodeJson(format)
-
     def fromDomain(session: Session): SessionPostgresFormat =
       session match {
         case s: Session.AwaitingUsers =>
@@ -173,23 +161,6 @@ object SessionInstances extends SessionInstances:
       number: Session.Number,
       admin: User.Id)
         extends SessionPostgresFormat(Session.Status.Finished, SessionPostgresFormat.Status.Finished)
-
-  // todo: remove
-  sealed private[persistence] trait SessionStatePostgresFormat
-
-  private[persistence] object SessionStatePostgresFormat:
-
-    def encodeJson(format: SessionPostgresFormat): Json =
-      format match {
-        case s: SessionPostgresFormat.AwaitingUsers =>
-          SessionStatePostgresFormat.AwaitingUsers().asJson
-        case s: SessionPostgresFormat.Finished =>
-          SessionStatePostgresFormat.Finished().asJson
-      }
-
-    case class AwaitingUsers() extends SessionStatePostgresFormat derives Encoder.AsObject, Decoder
-
-    case class Finished() extends SessionStatePostgresFormat derives Encoder.AsObject, Decoder
 
   sealed abstract private[persistence] class SessionElementPostgresFormat(val `type`: SessionElementPostgresFormat.Type):
     def number: SessionElement.Number

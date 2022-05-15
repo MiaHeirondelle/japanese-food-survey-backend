@@ -20,15 +20,17 @@ object SubmitRespondentDataForm:
     ).mapN(SubmitRespondentDataForm.apply)
 
   enum Sex:
-    case Male, Female
+    case Male, Female, Other, Unspecified
 
   object Sex:
 
     def fromString(str: String): Option[SubmitRespondentDataForm.Sex] =
       str match {
-        case "male"   => SubmitRespondentDataForm.Sex.Male.some
-        case "female" => SubmitRespondentDataForm.Sex.Female.some
-        case _        => none
+        case "male"        => SubmitRespondentDataForm.Sex.Male.some
+        case "female"      => SubmitRespondentDataForm.Sex.Female.some
+        case "other"       => SubmitRespondentDataForm.Sex.Other.some
+        case "unspecified" => SubmitRespondentDataForm.Sex.Unspecified.some
+        case _             => none
       }
 
     extension (sex: SubmitRespondentDataForm.Sex)
@@ -38,6 +40,10 @@ object SubmitRespondentDataForm:
             RespondentData.Sex.Male
           case SubmitRespondentDataForm.Sex.Female =>
             RespondentData.Sex.Female
+          case SubmitRespondentDataForm.Sex.Other =>
+            RespondentData.Sex.Other
+          case SubmitRespondentDataForm.Sex.Unspecified =>
+            RespondentData.Sex.Unspecified
         }
 
     implicit val queryParamDecoder: QueryParamDecoder[SubmitRespondentDataForm.Sex] =

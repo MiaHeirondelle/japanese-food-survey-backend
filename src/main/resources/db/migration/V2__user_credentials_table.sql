@@ -1,8 +1,8 @@
-CREATE DOMAIN string_hash AS VARCHAR(64);
+CREATE DOMAIN string_hash AS VARCHAR(256);
 
 CREATE TABLE "user_credentials" (
-  user_id varchar(36) PRIMARY KEY REFERENCES "user" (id),
-  login VARCHAR(100) UNIQUE,
+  user_id       varchar(36) PRIMARY KEY REFERENCES "user" (id),
+  login         VARCHAR(100) UNIQUE,
   password_hash string_hash,
   password_salt bytea
 );

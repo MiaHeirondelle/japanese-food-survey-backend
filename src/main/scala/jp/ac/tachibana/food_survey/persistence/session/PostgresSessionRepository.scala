@@ -19,7 +19,6 @@ import jp.ac.tachibana.food_survey.persistence.formats.ParameterInstances.*
 import jp.ac.tachibana.food_survey.persistence.formats.QuestionInstances.{AnswerId, AnswerPostgresFormat, QuestionPostgresFormat}
 import jp.ac.tachibana.food_survey.persistence.formats.SessionInstances.SessionPostgresFormat
 
-// todo: remove state
 class PostgresSessionRepository[F[_]: Async](implicit tr: Transactor[F]) extends SessionRepository[F]:
 
   // todo: trigger on status - only one active session
@@ -50,7 +49,7 @@ class PostgresSessionRepository[F[_]: Async](implicit tr: Transactor[F]) extends
     query.transact(tr)
 
   private val selectActiveSessionQuery: ConnectionIO[Option[SessionPostgresFormat.AwaitingUsers]] =
-    sql"""SELECT session_number, admin_id, status, state FROM "survey_session" WHERE status != 'finished'"""
+    sql"""SELECT session_number, admin_id, status FROM "survey_session" WHERE status != 'finished'"""
       .query[SessionPostgresFormat.AwaitingUsers]
       .option
 
@@ -75,7 +74,7 @@ class PostgresSessionRepository[F[_]: Async](implicit tr: Transactor[F]) extends
 
   private def insertNewSessionQuery(session: Session.AwaitingUsers) =
     val data = SessionPostgresFormat.fromDomain(session)
-    sql"""INSERT INTO "survey_session" (session_number, admin_id, status, state) VALUES ($data)""".update.run
+    sql"""INSERT INTO "survey_session" (session_number, admin_id, status) VALUES ($data)""".update.run
 
   private def insertParticipantsQuery(session: Session.AwaitingUsers) =
     val data = session.waitingForUsers.map(u => (session.number, u.id))
@@ -84,7 +83,6 @@ class PostgresSessionRepository[F[_]: Async](implicit tr: Transactor[F]) extends
 
   override def finishSession(session: Session.Finished): F[Unit] =
     val encoded = SessionPostgresFormat.fromDomain(session)
-    val encodedState = encoded.asStateJson
     val update =
       for {
         _ <- updateSessionQuery(session)
@@ -98,8 +96,7 @@ class PostgresSessionRepository[F[_]: Async](implicit tr: Transactor[F]) extends
     val format = SessionPostgresFormat.fromDomain(session)
     sql"""UPDATE "survey_session" SET
          |admin_id = ${format.admin},
-         |status = ${format.encodedStatus},
-         |state = ${format.asStateJson}
+         |status = ${format.encodedStatus}
          |WHERE session_number = ${format.number}
         """.stripMargin.update.run
 

@@ -15,7 +15,7 @@ import jp.ac.tachibana.food_survey.domain.session.{Session, SessionElement}
 import jp.ac.tachibana.food_survey.domain.user.User
 import jp.ac.tachibana.food_survey.services.event_log.EventLogService
 import jp.ac.tachibana.food_survey.services.session.model.*
-import jp.ac.tachibana.food_survey.services.session.{SessionListenerService, SessionService}
+import jp.ac.tachibana.food_survey.services.session.{model, SessionListenerService, SessionService}
 
 import scala.concurrent.duration.*
 
@@ -42,113 +42,128 @@ class DefaultSessionListenerProgram[F[_]: Concurrent](
   private def processMessage(
     message: InputSessionMessage,
     session: Session,
-    user: User): F[Option[OutputSessionMessage]] =
+    inputUser: User): F[PerUserProcessor[F]] =
     message match {
       case InputSessionMessage.BeginSession =>
-        OptionT(sessionService.begin(session.admin).map(_.toOption))
-          .semiflatTap(s => eventLogService.sessionBegin(s.number))
-          .map[OutputSessionMessage](OutputSessionMessage.SessionBegan.apply)
-          .value
+        wrapProcessorF(
+          OptionT(sessionService.begin(session.admin).map(_.toOption))
+            .semiflatTap(s => eventLogService.sessionBegin(s.number))
+            .map(s =>
+              userProcessor(outputUser => OutputSessionMessage.SessionBegan(s.withSortedRespondents(forUserId = outputUser.id))))
+            .value
+        )
       case InputSessionMessage.ReadyToProceed =>
-        user match {
+        inputUser match {
           case _: User.Admin =>
-            EitherT(sessionService.getCurrentElementState).toOption.map {
-              case s: SessionService.SessionElementState.Finished =>
-                OutputSessionMessage.SessionFinished(s.session)
-              case s: SessionService.SessionElementState.Question =>
-                elementSelectedMessage(s.session)
-              case s: SessionService.SessionElementState.QuestionReview =>
-                elementSelectedMessage(s.session)
-              case s: SessionService.SessionElementState.Text =>
-                elementSelectedMessage(s.session)
-              case s: SessionService.SessionElementState.BeforeFirstElement =>
-                elementSelectedMessage(s.session)
-              case s: SessionService.SessionElementState.Paused =>
-                OutputSessionMessage.SessionPaused
-            }.value
+            identityProcessorF(
+              EitherT(sessionService.getCurrentElementState).toOption.map {
+                case s: SessionService.SessionElementState.Finished =>
+                  OutputSessionMessage.SessionFinished(s.session)
+                case s: SessionService.SessionElementState.Question =>
+                  elementSelectedMessage(s.session)
+                case s: SessionService.SessionElementState.QuestionReview =>
+                  elementSelectedMessage(s.session)
+                case s: SessionService.SessionElementState.Text =>
+                  elementSelectedMessage(s.session)
+                case s: SessionService.SessionElementState.BeforeFirstElement =>
+                  elementSelectedMessage(s.session)
+                case s: SessionService.SessionElementState.Paused =>
+                  OutputSessionMessage.SessionPaused
+              }.value
+            )
 
           case _: User.Respondent =>
-            EitherT(sessionService.getCurrentElementState).toOption.flatMapF {
-              case _: SessionService.SessionElementState.BeforeFirstElement =>
-                EitherT(sessionService.transitionToFirstElement(user.id)).toOption
-                  .flatMapF(processElementState)
-                  .value
+            identityProcessorF(
+              EitherT(sessionService.getCurrentElementState).toOption.flatMapF {
+                case _: SessionService.SessionElementState.BeforeFirstElement =>
+                  EitherT(sessionService.transitionToFirstElement(inputUser.id)).toOption
+                    .flatMapF(processElementState)
+                    .value
 
-              case state: SessionService.NonPendingSessionElementState =>
-                state.session match {
-                  case s: Session.InProgress =>
-                    elementSelectedMessage(s).some.pure[F]
+                case state: SessionService.NonPendingSessionElementState =>
+                  state.session match {
+                    case s: Session.InProgress =>
+                      elementSelectedMessage(s).some.pure[F]
 
-                  case s: Session.Finished =>
-                    OutputSessionMessage.SessionFinished(s).some.pure[F]
-                }
+                    case s: Session.Finished =>
+                      OutputSessionMessage.SessionFinished(s).some.pure[F]
+                  }
 
-              case _: SessionService.SessionElementState.Paused =>
-                OutputSessionMessage.SessionPaused.some.pure[F]
-            }.value
+                case _: SessionService.SessionElementState.Paused =>
+                  OutputSessionMessage.SessionPaused.some.pure[F]
+              }.value
+            )
         }
       case InputSessionMessage.PauseSession =>
-        user match {
-          case _: User.Respondent =>
-            none.pure[F]
-          case _: User.Admin =>
-            EitherT(sessionService.pause)
-              .semiflatTap(_ => sessionListenerService.stopTick)
-              .semiflatTap(s => eventLogService.sessionPause(s.session.number))
-              .value
-              .map(_.toOption.as(OutputSessionMessage.SessionPaused))
-        }
+        identityProcessorF(
+          inputUser match {
+            case _: User.Respondent =>
+              none.pure[F]
+            case _: User.Admin =>
+              EitherT(sessionService.pause)
+                .semiflatTap(_ => sessionListenerService.stopTick)
+                .semiflatTap(s => eventLogService.sessionPause(s.session.number))
+                .value
+                .map(_.toOption.as(OutputSessionMessage.SessionPaused))
+          }
+        )
 
       case InputSessionMessage.ResumeSession =>
-        user match {
-          case _: User.Respondent =>
-            none.pure[F]
-          case _: User.Admin =>
-            EitherT(sessionService.resume)
-              .semiflatTap(s => eventLogService.sessionResume(s.session.number))
-              .semiflatMap(processNonPendingElementState)
-              .value
-              .map(_.toOption)
-        }
+        identityProcessorF(
+          inputUser match {
+            case _: User.Respondent =>
+              none.pure[F]
+            case _: User.Admin =>
+              EitherT(sessionService.resume)
+                .semiflatTap(s => eventLogService.sessionResume(s.session.number))
+                .semiflatMap(processNonPendingElementState)
+                .value
+                .map(_.toOption)
+          }
+        )
 
       case InputSessionMessage.ProvideIntermediateAnswer(questionId, scaleValue, comment) =>
-        session match {
-          case s: Session.InProgress =>
-            OptionT
-              .fromOption(s.questionById(questionId))
-              .flatMap { question =>
-                val answer = question.toAnswer(session.number, user.id, scaleValue, comment)
-                EitherT(sessionService.provideAnswer(answer)).toOption
-                  .semiflatTap(_ => eventLogService.answerSubmit(answer))
-              }
-              .value
-              .as(none)
+        identityProcessorF(
+          session match {
+            case s: Session.InProgress =>
+              OptionT
+                .fromOption(s.questionById(questionId))
+                .flatMap { question =>
+                  val answer = question.toAnswer(session.number, inputUser.id, scaleValue, comment)
+                  EitherT(sessionService.provideAnswer(answer)).toOption
+                    .semiflatTap(_ => eventLogService.answerSubmit(answer))
+                }
+                .value
+                .as(none)
 
-          case _ =>
-            none[OutputSessionMessage].pure[F]
-        }
+            case _ =>
+              none[OutputSessionMessage].pure[F]
+          }
+        )
 
       case InputSessionMessage.ProvideAnswer(questionId, scaleValue, comment) =>
-        session match {
-          case s: Session.InProgress =>
-            OptionT
-              .fromOption(s.questionById(questionId))
-              .flatMap { question =>
-                val answer = question.toAnswer(session.number, user.id, scaleValue, comment)
-                EitherT(sessionService.provideAnswer(answer)).toOption
-              }
-              .flatMap {
-                case SessionService.SessionElementState.Question(_, SessionService.QuestionState.Finished, _) =>
-                  OptionT(forceProceedToNextElement)
+        identityProcessorF(
+          session match {
+            case s: Session.InProgress =>
+              OptionT
+                .fromOption(s.questionById(questionId))
+                .flatMap { question =>
+                  val answer = question.toAnswer(session.number, inputUser.id, scaleValue, comment)
+                  EitherT(sessionService.provideAnswer(answer)).toOption
+                }
+                .flatMap {
+                  case SessionService.SessionElementState.Question(_, SessionService.QuestionState.Finished, _) =>
+                    OptionT(forceProceedToNextElement)
 
-                case SessionService.SessionElementState.Question(_, SessionService.QuestionState.Pending, _) =>
-                  OptionT.none
-              }
-              .value
+                  case SessionService.SessionElementState.Question(_, SessionService.QuestionState.Pending, _) =>
+                    OptionT.none
+                }
+                .value
 
-          case _ =>
-            none[OutputSessionMessage].pure[F]
-        }
+            case _ =>
+              none[OutputSessionMessage].pure[F]
+          }
+        )
     }
 
   private def proceedToNextElement: F[Option[OutputSessionMessage]] =
@@ -241,3 +256,15 @@ class DefaultSessionListenerProgram[F[_]: Concurrent](
       case text: SessionElement.Text =>
         textElementSelectedMessage(text)
     }
+
+  private def identityProcessorF(messageOpt: F[Option[OutputSessionMessage]]): F[PerUserProcessor[F]] =
+    ((_: User) => messageOpt).pure[F]
+
+  private def wrapProcessorF(fp: F[Option[PerUserProcessor[F]]]): F[PerUserProcessor[F]] =
+    fp.map {
+      case Some(p) => p
+      case None    => (_: User) => none[model.OutputSessionMessage].pure[F]
+    }
+
+  private def userProcessor(f: User => OutputSessionMessage): PerUserProcessor[F] =
+    (user: User) => f(user).some.pure[F]

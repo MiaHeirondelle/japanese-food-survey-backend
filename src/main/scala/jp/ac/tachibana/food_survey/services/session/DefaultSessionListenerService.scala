@@ -83,13 +83,20 @@ class DefaultSessionListenerService[F[_]: Temporal](
   // todo: on close unregister?
   private def transformInput(
     processor: SessionMessageProcessor[F],
-    user: User
+    inputUser: User
   )(input: SessionListenerInput[F]): fs2.Stream[F, Unit] =
     input.evalMap { inputMessage =>
       val processF = for {
         session <- OptionT(currentSessionStateManager.getCurrentSession)
-        outputMessage <- OptionT(processor(inputMessage, session, user))
-        result <- OptionT.liftF(broadcastMessage(outputMessage)(session))
+        perUserProcessor <- OptionT.liftF(processor(inputMessage, session, inputUser))
+        result <- OptionT.liftF(session.participants.traverse { outputUser =>
+          println(outputUser)
+          for {
+            outputMessage <- perUserProcessor(outputUser)
+            _ = println(outputMessage)
+            sendResult <- outputMessage.traverse(sendMessage(outputUser.id))
+          } yield sendResult
+        })
       } yield result
       processF.value.void
     }
@@ -101,9 +108,9 @@ class DefaultSessionListenerService[F[_]: Temporal](
     currentSessionStateManager.getCurrentSession.map(_.traverse(broadcastMessage(message)))
 
   private def broadcastMessage(message: OutputSessionMessage)(session: Session): F[Unit] =
-    session.participants.traverse(u => sendMessage(message)(u.id)).void
+    session.participants.traverse(u => sendMessage(u.id)(message)).void
 
-  private def sendMessage(message: OutputSessionMessage)(userId: User.Id): F[Unit] =
+  private def sendMessage(userId: User.Id)(message: OutputSessionMessage): F[Unit] =
     for {
       allOutputs <- outputsMapRef.get
       output = allOutputs.get(userId)

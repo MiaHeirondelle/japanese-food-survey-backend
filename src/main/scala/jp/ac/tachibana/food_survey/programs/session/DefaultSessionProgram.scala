@@ -16,8 +16,13 @@ class DefaultSessionProgram[F[_]: Monad](
   eventLogService: EventLogService[F])
     extends SessionProgram[F]:
 
-  override def getActiveSession: F[Option[Session.NotFinished]] =
-    sessionService.getActiveSession
+  override def getActiveSession(forUserId: User.Id): F[Option[Session.NotFinished]] =
+    sessionService.getActiveSession.map(_.map {
+      case s: Session.InProgress =>
+        s.withSortedRespondents(forUserId)
+      case s =>
+        s
+    })
 
   override def create(
     creator: User.Admin,

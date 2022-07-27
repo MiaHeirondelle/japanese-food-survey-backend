@@ -111,6 +111,12 @@ object Session:
       def provideAnswer(answer: QuestionAnswer): Session.InProgress =
         session.copy(answers = session.answers.provideAnswer(answer))
 
+      def withSortedRespondents(forUserId: User.Id): Session.InProgress =
+        // Sort users, but place the user who the sorting is done for first.
+        session.copy(
+          joinedUsers = session.joinedUsers.sortBy(user => if (user.id === forUserId) "" else user.name)
+        )
+
     def fromTemplate(
       session: Session.CanBegin,
       template: SessionTemplate): Session.InProgress =

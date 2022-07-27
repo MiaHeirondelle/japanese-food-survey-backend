@@ -4,7 +4,10 @@ import jp.ac.tachibana.food_survey.domain.session.Session
 import jp.ac.tachibana.food_survey.domain.user.User
 
 type SessionMessageProcessor[F[_]] =
-  (InputSessionMessage, Session, User) => F[Option[OutputSessionMessage]]
+  (InputSessionMessage, Session, User) => F[PerUserProcessor[F]]
+
+type PerUserProcessor[F[_]] =
+  User => F[Option[OutputSessionMessage]]
 
 type SessionListenerInput[F[_]] =
   fs2.Stream[F, InputSessionMessage]

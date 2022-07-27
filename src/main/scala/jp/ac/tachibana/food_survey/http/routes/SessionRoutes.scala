@@ -30,9 +30,9 @@ class SessionRoutes[F[_]: Async](
 
   private def baseRoutes: AuthedRoutes[AuthDetails, F] =
     AuthedRoutes.of {
-      case GET -> Root / "active" as _ =>
+      case GET -> Root / "active" as user =>
         for {
-          sessionOpt <- sessionProgram.getActiveSession
+          sessionOpt <- sessionProgram.getActiveSession(forUserId = user.user.id)
           result <- Ok(SessionFormat.fromDomainNotFinishedOpt(sessionOpt))
         } yield result
 

@@ -12,7 +12,6 @@ object User:
 
   object Id:
 
-    // todo: fix?
     implicit val order: Order[User.Id] =
       Order.from((v1, v2) => v1.value.compare(v2.value))
 

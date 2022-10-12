@@ -145,4 +145,4 @@ class DefaultSessionService[F[_]: Monad](
     currentSessionStateManager.finishInProgressSession.map(_.toRight(SessionService.FinishSessionError.WrongSessionStatus))
 
   override def stop: F[Unit] =
-    currentSessionStateManager.reset
+    currentSessionStateManager.stop

@@ -48,8 +48,13 @@ class DefaultCurrentSessionStateManager[F[_]: Monad](
   override def finishInProgressSession: F[Option[Session.Finished]] =
     inProgressSessionManager.getCurrentState
       .flatMap {
-        case Some(element: SessionService.SessionElementState.Finished) =>
-          sessionRepository.finishSession(element.session) >> unregisterAll.as(element.session.some)
+        case Some(element: SessionService.SessionElementState) =>
+          element.session match {
+            case finishedSession: Session.Finished =>
+              finishSession(finishedSession).as(finishedSession.some)
+            case _ =>
+              none[Session.Finished].pure[F]
+          }
         case _ =>
           none[Session.Finished].pure[F]
       }
@@ -68,8 +73,22 @@ class DefaultCurrentSessionStateManager[F[_]: Monad](
       .widen[Session]
       .orElse(OptionT(inProgressSessionManager.getCurrentState).map(_.session))
 
-  override def reset: F[Unit] =
-    unregisterAll >> sessionRepository.reset
+  override def stop: F[Unit] =
+    inProgressSessionManager.getCurrentState
+      .flatMap {
+        case Some(element: SessionService.SessionElementState) =>
+          element.session match {
+            case finishedSession: Session.Finished =>
+              finishSession(finishedSession)
+            case session: Session.InProgress =>
+              finishSession(Session.Finished.fromInProgress(session))
+          }
+        case _ =>
+          ().pure[F]
+      }
 
   private def unregisterAll: F[Unit] =
     inProgressSessionManager.unregisterSession >> awaitingUsersSessionManager.unregisterSession
+
+  private def finishSession(finishedSession: Session.Finished): F[Unit] =
+    sessionRepository.finishSession(finishedSession) >> unregisterAll

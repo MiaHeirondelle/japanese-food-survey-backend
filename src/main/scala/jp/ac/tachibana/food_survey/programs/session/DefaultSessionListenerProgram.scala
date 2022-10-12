@@ -257,8 +257,8 @@ class DefaultSessionListenerProgram[F[_]: Concurrent](
         textElementSelectedMessage(text)
     }
 
-  private def identityProcessorF(messageOpt: F[Option[OutputSessionMessage]]): F[PerUserProcessor[F]] =
-    ((_: User) => messageOpt).pure[F]
+  private def identityProcessorF(messageOptF: F[Option[OutputSessionMessage]]): F[PerUserProcessor[F]] =
+    messageOptF.map(messageOpt => (_: User) => messageOpt.pure[F])
 
   private def wrapProcessorF(fp: F[Option[PerUserProcessor[F]]]): F[PerUserProcessor[F]] =
     fp.map {

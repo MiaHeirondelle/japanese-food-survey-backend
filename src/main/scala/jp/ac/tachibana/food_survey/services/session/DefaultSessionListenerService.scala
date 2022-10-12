@@ -90,10 +90,8 @@ class DefaultSessionListenerService[F[_]: Temporal](
         session <- OptionT(currentSessionStateManager.getCurrentSession)
         perUserProcessor <- OptionT.liftF(processor(inputMessage, session, inputUser))
         result <- OptionT.liftF(session.participants.traverse { outputUser =>
-          println(outputUser)
           for {
             outputMessage <- perUserProcessor(outputUser)
-            _ = println(outputMessage)
             sendResult <- outputMessage.traverse(sendMessage(outputUser.id))
           } yield sendResult
         })

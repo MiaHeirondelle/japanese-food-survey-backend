@@ -39,6 +39,7 @@ object Main extends IOApp.Simple:
         val eventLogRepository = new PostgresEventLogRepository[IO]
 
         for {
+          // todo: re-register session state on reload
           awaitingUsersSessionManager <- DefaultAwaitingUsersSessionManager.create[IO]
           inProgressSessionManager <- DefaultInProgressSessionManager.create[IO]
           currentSessionStateManager = new DefaultCurrentSessionStateManager[IO](

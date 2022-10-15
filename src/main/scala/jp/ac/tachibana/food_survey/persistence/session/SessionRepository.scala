@@ -14,5 +14,4 @@ trait SessionRepository[F[_]]:
   // todo: session doesn't exist/already finished error
   def finishSession(session: Session.Finished): F[Unit]
 
-  // todo: remove
-  def reset: F[Unit]
+  def removeNotBeganSession(sessionNumber: Session.Number): F[Unit]

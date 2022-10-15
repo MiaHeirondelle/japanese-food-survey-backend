@@ -83,12 +83,21 @@ class DefaultCurrentSessionStateManager[F[_]: Monad](
             case session: Session.InProgress =>
               finishSession(Session.Finished.fromInProgress(session))
           }
-        case _ =>
-          ().pure[F]
-      }
+        case None =>
+          awaitingUsersSessionManager.getCurrentState
+            .flatMap {
+              case Some(session) =>
+                stopNotBeganSession(session)
+              case None =>
+                ().pure[F]
+            }
+      } >> unregisterAll
 
   private def unregisterAll: F[Unit] =
     inProgressSessionManager.unregisterSession >> awaitingUsersSessionManager.unregisterSession
 
   private def finishSession(finishedSession: Session.Finished): F[Unit] =
     sessionRepository.finishSession(finishedSession) >> unregisterAll
+
+  private def stopNotBeganSession(session: Session.NotBegan): F[Unit] =
+    sessionRepository.removeNotBeganSession(session.number) >> unregisterAll

@@ -130,18 +130,10 @@ class PostgresSessionRepository[F[_]: Async](implicit tr: Transactor[F]) extends
         .updateMany(data)
     } yield result
 
-  override def reset: F[Unit] =
+  override def removeNotBeganSession(sessionNumber: Session.Number): F[Unit] =
     val query = for {
-      latestSessionNumber <-
-        sql"""SELECT session_number FROM survey_session WHERE status != 'finished' ORDER BY session_number DESC LIMIT 1"""
-          .query[Session.Number]
-          .option
-      _ <- latestSessionNumber.traverse { sn =>
-        for {
-          _ <- sql"""DELETE FROM "answer" WHERE session_number = $sn""".update.run
-          _ <- sql"""DELETE FROM "survey_session_participant" WHERE session_number = $sn""".update.run
-          _ <- sql"""DELETE FROM "survey_session" WHERE session_number = $sn""".update.run
-        } yield ()
-      }
+      _ <- sql"""DELETE FROM "answer" WHERE session_number = $sessionNumber""".update.run
+      _ <- sql"""DELETE FROM "survey_session_participant" WHERE session_number = $sessionNumber""".update.run
+      _ <- sql"""DELETE FROM "survey_session" WHERE session_number = $sessionNumber""".update.run
     } yield ()
     query.transact(tr)

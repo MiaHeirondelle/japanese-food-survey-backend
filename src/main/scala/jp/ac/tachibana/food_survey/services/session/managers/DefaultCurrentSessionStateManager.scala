@@ -91,6 +91,7 @@ class DefaultCurrentSessionStateManager[F[_]: Monad](
   private def unregisterAll: F[Unit] =
     inProgressSessionManager.unregisterSession >> awaitingUsersSessionManager.unregisterSession
 
+  // todo: move methods below to respectie managers
   private def finishSession(finishedSession: Session.Finished): F[Unit] =
     sessionRepository.finishSession(finishedSession) >> unregisterAll
 

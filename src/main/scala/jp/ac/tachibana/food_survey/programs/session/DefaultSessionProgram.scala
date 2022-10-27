@@ -48,5 +48,5 @@ class DefaultSessionProgram[F[_]: Monad](
           SessionProgram.SessionJoinError.WrongSessionStatus
       })
 
-  override def stop: F[Unit] =
-    sessionService.stop
+  override def cancel: F[Unit] =
+    sessionService.cancel

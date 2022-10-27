@@ -80,7 +80,7 @@ class SessionRoutes[F[_]: Async](
         } yield result
 
       case POST -> Root / "stop" as admin =>
-        sessionListenerProgram.stop >> sessionProgram.stop >> Ok()
+        sessionListenerProgram.stop >> sessionProgram.cancel >> Ok()
     }
 
   override val routes: HttpRoutes[F] =

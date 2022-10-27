@@ -38,7 +38,7 @@ trait SessionService[F[_]]:
   def finish: F[Either[SessionService.FinishSessionError, Session.Finished]]
 
   // todo: update signature
-  def stop: F[Unit]
+  def cancel: F[Unit]
 
 object SessionService:
 

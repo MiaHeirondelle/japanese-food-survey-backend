@@ -16,7 +16,7 @@ trait SessionProgram[F[_]]:
   def join(respondent: User.Respondent): F[Either[SessionProgram.SessionJoinError, Session.NotBegan]]
 
   // todo: update signature
-  def stop: F[Unit]
+  def cancel: F[Unit]
 
 object SessionProgram:
 

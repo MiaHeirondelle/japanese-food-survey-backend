@@ -17,4 +17,4 @@ trait CurrentSessionStateManager[F[_]]:
 
   def refreshAwaitingUsersSessionManager: F[Unit]
 
-  def stop: F[Unit]
+  def cancel: F[Unit]

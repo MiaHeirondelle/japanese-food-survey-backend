@@ -144,5 +144,5 @@ class DefaultSessionService[F[_]: Monad](
   override def finish: F[Either[SessionService.FinishSessionError, Session.Finished]] =
     currentSessionStateManager.finishInProgressSession.map(_.toRight(SessionService.FinishSessionError.WrongSessionStatus))
 
-  override def stop: F[Unit] =
-    currentSessionStateManager.stop
+  override def cancel: F[Unit] =
+    currentSessionStateManager.cancel

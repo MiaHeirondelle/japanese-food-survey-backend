@@ -73,29 +73,25 @@ class DefaultCurrentSessionStateManager[F[_]: Monad](
       .widen[Session]
       .orElse(OptionT(inProgressSessionManager.getCurrentState).map(_.session))
 
-  override def stop: F[Unit] =
-    inProgressSessionManager.getCurrentState
-      .flatMap {
-        case Some(element: SessionService.SessionElementState) =>
-          element.session match {
-            case finishedSession: Session.Finished =>
-              finishSession(finishedSession)
-            case session: Session.InProgress =>
-              finishSession(Session.Finished.fromInProgress(session))
-          }
-        case None =>
-          awaitingUsersSessionManager.getCurrentState
-            .flatMap {
-              case Some(session) =>
-                stopNotBeganSession(session)
-              case None =>
-                ().pure[F]
-            }
-      } >> unregisterAll
+  override def cancel: F[Unit] =
+    getCurrentSession.flatMap {
+      case Some(session) =>
+        session match {
+          case finishedSession: Session.Finished =>
+            finishSession(finishedSession)
+          case inProgressSession: Session.InProgress =>
+            finishSession(Session.Finished.fromInProgress(inProgressSession))
+          case notBeganSession: Session.NotBegan =>
+            stopNotBeganSession(notBeganSession)
+        }
+      case None =>
+        ().pure[F]
+    } >> unregisterAll
 
   private def unregisterAll: F[Unit] =
     inProgressSessionManager.unregisterSession >> awaitingUsersSessionManager.unregisterSession
 
+  // todo: move methods below to respectie managers
   private def finishSession(finishedSession: Session.Finished): F[Unit] =
     sessionRepository.finishSession(finishedSession) >> unregisterAll
 
